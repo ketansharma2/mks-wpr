@@ -3,36 +3,21 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import AdminSidebar from '@/app/components/layout/sidebar/admin-sidebar';
-import { 
-  LayoutDashboard, 
-  Users, 
-  ClipboardList, 
-  FileText, 
-  ShieldCheck, 
-  ArrowRight, 
-  TrendingUp, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle,
-  Briefcase,
-  Building
-} from 'lucide-react';
+import { Users, FileText, Building, HelpCircle, ShieldCheck, ArrowUpRight, ExternalLink } from 'lucide-react';
 
 export default function AdminDashboardPage() {
-  // Admin KPI metrics state
   const [stats] = useState({
-    totalMembers: 14,
-    activeTasks: 38,
-    pendingApprovals: 7,
-    completedToday: 19,
-    systemHealth: 'Optimal',
+    totalMembers: 12,
+    activeTasksWPR: 28,
+    pendingSupportTickets: 2,
+    companyDocs: 4
   });
 
-  // Recent team activity logs
   const [recentActivities] = useState([
-    { id: 1, member: 'Sonu Rana', action: 'Submitted closing summary for Q2 Sales Pipeline', time: '10 mins ago', type: 'task' },
-    { id: 2, member: 'Aman Verma', action: 'Logged WPR for Assembly Line Maintenance', time: '25 mins ago', type: 'wpr' },
-    { id: 3, member: 'Neha Sharma', action: 'Updated task status to In Progress', time: '1 hour ago', type: 'task' },
+    { id: 1, type: 'WPR', text: 'Sonu Rana submitted task WPR: WPR Sheet Automation', time: '10m ago', status: 'Completed' },
+    { id: 2, type: 'SUPPORT', text: 'Neha Sharma raised a support ticket regarding Google Sheets validator', time: '1h ago', status: 'Pending' },
+    { id: 3, type: 'MEMBER', text: 'Aman Verma profile credentials updated by Admin', time: '3h ago', status: 'Active' },
+    { id: 4, type: 'HIERARCHY', text: 'New Canva Hierarchy PDF chart version uploaded', time: '1d ago', status: 'Updated' },
   ]);
 
   return (
@@ -41,169 +26,113 @@ export default function AdminDashboardPage() {
       {/* Admin Sidebar */}
       <AdminSidebar />
 
-      {/* Main Admin Workspace */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+      {/* Main Workspace */}
+      <main className="flex-1 p-3 sm:p-5 lg:p-6 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-4">
           
-          {/* Admin Welcome Greeting Banner */}
-          <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {/* Header Banner with Compact Quick Links on Upper Right */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-[10px] font-semibold tracking-wider uppercase mb-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" /> Administrator Control Center
-              </div>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                Welcome back, Admin
+              
+              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                Admin Command Dashboard
               </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Monitor team operations, review WPR submissions, and dispatch task directives across departments.
-              </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/admin/tasks"
-                className="flex items-center gap-1.5 py-2.5 px-4 bg-gradient-to-b from-blue-500 to-blue-600 text-white font-semibold text-xs rounded-xl shadow-sm hover:from-blue-600 hover:to-blue-700 transition"
-              >
-                <ClipboardList className="w-4 h-4" /> Manage Directives
-                <ArrowRight className="w-3.5 h-3.5" />
+
+            {/* Quick Navigation Pills on Upper Right */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+              <Link href="/admin/members" className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 rounded-xl transition flex items-center gap-1">
+                <Users className="w-3.5 h-3.5 text-blue-600" /> Members
+              </Link>
+              <Link href="/admin/wpr" className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 rounded-xl transition flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5 text-indigo-600" /> WPR
+              </Link>
+              <Link href="/admin/rnr" className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 rounded-xl transition flex items-center gap-1">
+                <Building className="w-3.5 h-3.5 text-amber-600" /> R&R
+              </Link>
+              <Link href="/admin/hierarchy" className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 rounded-xl transition flex items-center gap-1">
+                <Building className="w-3.5 h-3.5 text-emerald-600" /> Hierarchy
+              </Link>
+              <Link href="/admin/help" className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 rounded-xl transition flex items-center gap-1">
+                <HelpCircle className="w-3.5 h-3.5 text-rose-600" /> Help
               </Link>
             </div>
           </div>
 
-          {/* ADMIN KPI SUMMARY CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* COMPACT METRICS GRID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Team Members</span>
-                <h3 className="text-2xl font-black text-slate-900">{stats.totalMembers}</h3>
-                <span className="text-[10px] text-emerald-600 font-semibold">12 Active Today</span>
+            <Link href="/admin/members" className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:border-blue-300 transition group flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Team Members</span>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.totalMembers}</h3>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                <Users className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 group-hover:scale-105 transition">
+                <Users className="w-4 h-4" />
               </div>
-            </div>
+            </Link>
 
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Task Directives</span>
-                <h3 className="text-2xl font-black text-slate-900">{stats.activeTasks}</h3>
-                <span className="text-[10px] text-blue-600 font-semibold">Across Departments</span>
+            <Link href="/admin/wpr" className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:border-blue-300 transition group flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">WPR Execution</span>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.activeTasksWPR}</h3>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                <ClipboardList className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-105 transition">
+                <FileText className="w-4 h-4" />
               </div>
-            </div>
+            </Link>
 
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Reviews</span>
-                <h3 className="text-2xl font-black text-slate-900">{stats.pendingApprovals}</h3>
-                <span className="text-[10px] text-amber-600 font-semibold">Closing Summaries</span>
+            <Link href="/admin/hierarchy" className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:border-blue-300 transition group flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company Docs</span>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.companyDocs}</h3>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-                <Clock className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 group-hover:scale-105 transition">
+                <Building className="w-4 h-4" />
               </div>
-            </div>
+            </Link>
 
-            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Completed Today</span>
-                <h3 className="text-2xl font-black text-slate-900">{stats.completedToday}</h3>
-                <span className="text-[10px] text-emerald-600 font-semibold">On-time Deliverables</span>
+            <Link href="/admin/help" className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:border-blue-300 transition group flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Support Tickets</span>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.pendingSupportTickets}</h3>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-                <CheckCircle2 className="w-6 h-6" />
+              <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 group-hover:scale-105 transition">
+                <HelpCircle className="w-4 h-4" />
               </div>
-            </div>
+            </Link>
 
           </div>
 
-          {/* QUICK ACTIONS & RECENT ACTIVITY */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Quick Actions Panel */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Quick Management</h3>
-              
-              <div className="space-y-2.5 text-xs">
-                <Link 
-                  href="/admin/tasks"
-                  className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-blue-50/50 border border-slate-200/80 hover:border-blue-200 rounded-2xl transition group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                      +
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900 group-hover:text-blue-600 transition">Assign New Task</p>
-                      <span className="text-[11px] text-slate-500">Dispatch directives to team members</span>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition" />
-                </Link>
+          {/* RECENT SYSTEM ACTIVITY FEED */}
+<div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Live System Activity Logs</h3>
+    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Live Sync</span>
+  </div>
 
-                <Link 
-                  href="/admin/members"
-                  className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-blue-50/50 border border-slate-200/80 hover:border-blue-200 rounded-2xl transition group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-                      👥
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900 group-hover:text-blue-600 transition">View Members Directory</p>
-                      <span className="text-[11px] text-slate-500">Inspect departmental personnel</span>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition" />
-                </Link>
-
-                <Link 
-                  href="/admin/wpr"
-                  className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-blue-50/50 border border-slate-200/80 hover:border-blue-200 rounded-2xl transition group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
-                      📊
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900 group-hover:text-blue-600 transition">Audit WPR Reports</p>
-                      <span className="text-[11px] text-slate-500">Review daily work progress logs</span>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Recent Live Team Activity Feed */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Recent Team Activity Stream</h3>
-                <span className="text-[11px] text-slate-400 font-medium">Live Feed</span>
-              </div>
-
-              <div className="space-y-3">
-                {recentActivities.map((act) => (
-                  <div key={act.id} className="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between gap-4 text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold flex-shrink-0">
-                        {act.member[0]}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900">{act.member} <span className="font-normal text-slate-600">— {act.action}</span></p>
-                        <span className="text-[10px] text-slate-400">{act.time}</span>
-                      </div>
-                    </div>
-                    <span className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-semibold text-slate-600 whitespace-nowrap shadow-2xs">
-                      {act.type.toUpperCase()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
+  <div className="space-y-2">
+    {recentActivities.map((act) => (
+      <div key={act.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="px-2 py-1 bg-blue-100 text-blue-700 font-bold rounded-lg text-[10px] flex-shrink-0">
+            {act.type}
+          </span>
+          <p className="font-semibold text-slate-900 truncate">{act.text}</p>
+        </div>
+        
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <span className="text-[10px] text-slate-400 font-mono">{act.time}</span>
+          <span className={`px-2 py-0.5 rounded font-semibold text-[10px] whitespace-nowrap ${
+            act.status === 'Completed' || act.status === 'Active' || act.status === 'Updated' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+          }`}>
+            {act.status}
+          </span>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
 
         </div>
       </main>
