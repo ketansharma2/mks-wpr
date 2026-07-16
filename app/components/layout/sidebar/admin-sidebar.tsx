@@ -30,6 +30,7 @@ export default function AdminSidebar() {
     { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { label: 'WPR', href: '/admin/wpr', icon: FileText },
     { label: 'R&R', href: '/admin/rnr', icon: BookOpen },
+    { label: 'Hierarchy', href: '/admin/hierarchy', icon: Building },
     { label: 'Team Members', href: '/admin/members', icon: Users },
     { label: 'Help & Support', href: '/admin/help', icon: HelpCircle },
 
