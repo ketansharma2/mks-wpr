@@ -3,9 +3,13 @@
 import { useState } from 'react';
 import Sidebar from '@/app/components/layout/sidebar/sidebar';
 import { Plus, Trash2, Edit2, Save, CheckCircle2, ExternalLink } from 'lucide-react';
-
+import { useEffect } from "react";
+import roleOverviewService from "@/services/roleOverview.service";
+import { getErrorMessage } from "@/lib/api-error";
+import rnrService from "@/services/rnr.service";
+import fixedTaskService from "@/services/fixedTask.service";
 interface RnrItem {
-  id: number;
+  _id: string;
   role: string;
   description: string;
   endGoal: string;
@@ -16,70 +20,270 @@ interface RnrItem {
 }
 
 interface FixedTaskItem {
-  id: number;
+  _id: string;
   assignedBy: string;
   task: string;
   frequency: string;
   uploadClosing: string;
 }
 
+interface RoleOverview {
+  name: string;
+  designation: string;
+  subject: string;
+  object: string;
+  goal: string;
+}
+
 export default function RnrPage() {
   const [effectiveDate] = useState('21st Oct');
-
-  const [overview, setOverview] = useState({
-    name: 'Sonu Rana',
-    designation: 'Data Analyst',
-    subject: 'Data Analysis & Business Intelligence',
-    object: 'Process, and analyze data to provide actionable insights that support business decision-making.',
-    goal: 'Ensure accurate reporting and improve data-driven decision.',
-  });
+ const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [overview, setOverview] = useState<RoleOverview>({
+  name: "",
+  designation: "",
+  subject: "",
+  object: "",
+  goal: "",
+});
   const [isOverviewSaved, setIsOverviewSaved] = useState(false);
 
-  const [rnrItems, setRnrItems] = useState<RnrItem[]>([
-    { id: 1, role: 'Reporting & Dashboarding', description: 'Create reports, dashboards, and visualizations for management', endGoal: 'Easy-to-understand insights for quick decisions', timings: 'Weekly/Monthly', guideline: 'Follow company reporting standards', process: 'Dashboard may require frequent updates', limitations: 'Standard data pipeline' },
-    { id: 2, role: 'KPI Monitoring', description: 'Track key performance indicators and trends across departments', endGoal: 'Identify growth opportunities or issues', timings: 'Weekly', guideline: 'Use predefined KPIs', process: 'KPIs need periodic validation', limitations: 'Data dependency' },
-    { id: 3, role: 'Data Analysis', description: 'Analyze structured/unstructured data, Identify trends & insights', endGoal: 'Actionable business insights', timings: 'Daily', guideline: 'Use approved tools', process: 'Extraction & cleaning', limitations: 'Limited by dataset quality' },
-    { id: 4, role: 'Data Format Redesign', description: "Organize sheet's data structure and redesign its format for clarity, readability, and easier updates", endGoal: 'User-friendly sheet, easy to maintain and update', timings: 'As needed', guideline: 'Follow spreadsheet best practices: clear headings, proper formatting, and logical structure', process: 'Redesign may require multiple iterations, dependent on management feedback', limitations: 'Scope adjustments' }
-  ]);
-  const [editingRnrId, setEditingRnrId] = useState<number | null>(null);
+  const [rnrItems, setRnrItems] = useState<RnrItem[]>([]);
+  
   const [rnrForm, setRnrForm] = useState({ role: '', description: '', endGoal: '', timings: '', guideline: '', process: '', limitations: '' });
 
-  const [fixedTasks, setFixedTasks] = useState<FixedTaskItem[]>([
-    { id: 1, assignedBy: 'Self', task: 'WPR Sheet Fill', frequency: 'Daily', uploadClosing: 'https://docs.google.com/spreadsheets/d/1DEREIFk0989UfUZrgVM8py_B8eSKJdfcUQjONp1C-QI/edit' },
-    { id: 2, assignedBy: 'S.Sir', task: 'Data Management Report Submit (9:00)', frequency: 'Daily', uploadClosing: '-' },
-    { id: 3, assignedBy: 'Ajay', task: 'Team Handling', frequency: 'Daily', uploadClosing: '-' },
-  ]);
-  const [editingFixedId, setEditingFixedId] = useState<number | null>(null);
+  const [fixedTasks, setFixedTasks] = useState<FixedTaskItem[]>([]);
+  const [editingFixedId, setEditingFixedId] = useState<string | null>(null);
   const [fixedForm, setFixedForm] = useState({ assignedBy: '', task: '', frequency: 'Daily', uploadClosing: '' });
-
+  const [editingRnrId, setEditingRnrId] = useState<string | null>(null);
   const handleOverviewChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setOverview({ ...overview, [e.target.name]: e.target.value });
     setIsOverviewSaved(false);
   };
 
-  const handleRnrSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rnrForm.role) return;
-    if (editingRnrId !== null) {
-      setRnrItems(rnrItems.map(i => i.id === editingRnrId ? { ...rnrForm, id: editingRnrId } : i));
-      setEditingRnrId(null);
-    } else {
-      setRnrItems([...rnrItems, { ...rnrForm, id: Date.now() }]);
-    }
-    setRnrForm({ role: '', description: '', endGoal: '', timings: '', guideline: '', process: '', limitations: '' });
-  };
 
-  const handleFixedSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fixedForm.task) return;
-    if (editingFixedId !== null) {
-      setFixedTasks(fixedTasks.map(i => i.id === editingFixedId ? { ...fixedForm, id: editingFixedId } : i));
-      setEditingFixedId(null);
-    } else {
-      setFixedTasks([...fixedTasks, { ...fixedForm, id: Date.now() }]);
+
+
+useEffect(() => {
+  handleGetOverview();
+  handleGetRnr();
+  handleGetFixedTasks();
+}, []);
+
+const handleGetFixedTasks = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await fixedTaskService.getTasks();
+
+    if (!response.success) {
+      setError(response.message);
+      return;
     }
-    setFixedForm({ assignedBy: '', task: '', frequency: 'Daily', uploadClosing: '' });
-  };
+
+    setFixedTasks(response.data);
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleFixedSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    setLoading(true);
+    setError("");
+
+    let response;
+
+    if (editingFixedId !== null) {
+      response = await fixedTaskService.updateTask(
+        editingFixedId.toString(),
+        fixedForm
+      );
+    } else {
+      response = await fixedTaskService.createTask(fixedForm);
+    }
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    await handleGetFixedTasks();
+
+    setEditingFixedId(null);
+
+    setFixedForm({
+      assignedBy: "",
+      task: "",
+      frequency: "Daily",
+      uploadClosing: "",
+    });
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleDeleteFixedTask = async (id: string) => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await fixedTaskService.deleteTask(id.toString());
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    await handleGetFixedTasks();
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleDeleteRnr = async (id: string) => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await rnrService.deleteTask(id.toString());
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    await handleGetRnr();
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleGetRnr = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await rnrService.getTasks();
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    setRnrItems(response.data);
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const handleRnrSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    setLoading(true);
+    setError("");
+
+    let response;
+
+    if (editingRnrId !== null) {
+      response = await rnrService.updateTask(
+        editingRnrId.toString(),
+        rnrForm
+      );
+    } else {
+      response = await rnrService.createTask(rnrForm);
+    }
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    await handleGetRnr();
+
+    setEditingRnrId(null);
+
+    setRnrForm({
+      role: "",
+      description: "",
+      endGoal: "",
+      timings: "",
+      guideline: "",
+      process: "",
+      limitations: "",
+    });
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleGetOverview = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await roleOverviewService.get();
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    setOverview(
+  response.data ?? {
+    name: "",
+    designation: "",
+    subject: "",
+    object: "",
+    goal: "",
+  }
+);
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleSaveOverview = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await roleOverviewService.save(overview);
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    setIsOverviewSaved(true);
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+ 
+
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row select-none" style={{ fontFamily: 'Cambria, serif' }}>
@@ -106,9 +310,14 @@ export default function RnrPage() {
           <CheckCircle2 className="w-3 h-3" /> Saved
         </span>
       )}
-      <button type="button" onClick={() => setIsOverviewSaved(true)} className="flex items-center gap-1.5 px-3.5 py-1.5 bg-sky-700 hover:bg-sky-800 text-white font-semibold text-[11px] rounded-lg transition shadow-sm border border-sky-600">
-        <Save className="w-3.5 h-3.5" /> Save Overview
-      </button>
+      <button
+  type="button"
+  onClick={handleSaveOverview}
+  className="..."
+>
+  <Save className="w-3.5 h-3.5" />
+  {loading ? "Saving..." : "Save Overview"}
+</button>
     </div>
   </div>
 
@@ -125,23 +334,23 @@ export default function RnrPage() {
           <>
             <div className="p-2 space-y-1 flex flex-col">
               <label className="block font-bold uppercase text-[10px] text-slate-500">Name</label>
-              <textarea name="name" rows={1} value={overview.name} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
+              <textarea name="name" rows={1} value={overview?.name ?? ""} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
             </div>
             <div className="p-2 space-y-1 flex flex-col">
               <label className="block font-bold uppercase text-[10px] text-slate-500">Designation</label>
-              <textarea name="designation" rows={1} value={overview.designation} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
+              <textarea name="designation" rows={1} value={overview?.designation} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
             </div>
             <div className="p-2 space-y-1 flex flex-col">
               <label className="block font-bold uppercase text-[10px] text-slate-500">Subject</label>
-              <textarea name="subject" rows={1} value={overview.subject} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
+              <textarea name="subject" rows={1} value={overview?.subject} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
             </div>
             <div className="p-2 space-y-1 flex flex-col">
               <label className="block font-bold uppercase text-[10px] text-slate-500">Object</label>
-              <textarea name="object" rows={1} value={overview.object} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
+              <textarea name="object" rows={1} value={overview?.object} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
             </div>
             <div className="p-2 space-y-1 flex flex-col">
               <label className="block font-bold uppercase text-[10px] text-slate-500">Goal</label>
-              <textarea name="goal" rows={1} value={overview.goal} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
+              <textarea name="goal" rows={1} value={overview?.goal} onChange={handleOverviewChange} onInput={handleAutoResize} className="w-full p-1.5 bg-slate-50/60 border border-sky-100 rounded text-xs text-slate-900 focus:border-blue-600 outline-none resize-none overflow-hidden" style={{ minHeight: '38px' }} />
             </div>
           </>
         );
@@ -193,7 +402,7 @@ export default function RnrPage() {
       </thead>
       <tbody className="divide-y divide-amber-100/50 bg-white">
         {rnrItems.map((item, idx) => (
-          <tr key={item.id} className="group hover:bg-amber-50/45 transition-all duration-200 align-top">
+          <tr key={item._id} className="group hover:bg-amber-50/45 transition-all duration-200 align-top">
             <td className="p-2.5 font-semibold text-slate-400">{idx + 1}</td>
             <td className="p-2.5 font-bold text-slate-900 whitespace-normal break-words">{item.role}</td>
             <td className="p-2.5 text-slate-600 max-w-[200px] whitespace-normal break-words">{item.description}</td>
@@ -202,8 +411,14 @@ export default function RnrPage() {
             <td className="p-2.5 text-slate-600 max-w-[180px] whitespace-normal break-words">{item.guideline}</td>
             <td className="p-2.5 text-slate-600 max-w-[180px] whitespace-normal break-words">{item.process} / {item.limitations}</td>
             <td className="p-2.5 text-right space-x-1 whitespace-nowrap">
-              <button type="button" onClick={() => { setEditingRnrId(item.id); setRnrForm(item); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
-              <button type="button" onClick={() => setRnrItems(rnrItems.filter(i => i.id !== item.id))} className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => { setEditingRnrId(item._id); setRnrForm(item); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
+              <button
+  type="button"
+  onClick={() => handleDeleteRnr(item._id)}
+  className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"
+>
+  <Trash2 className="w-3.5 h-3.5" />
+</button>
             </td>
           </tr>
         ))}
@@ -291,7 +506,7 @@ export default function RnrPage() {
       </thead>
       <tbody className="divide-y divide-emerald-100/50 bg-white">
         {fixedTasks.map((item, idx) => (
-          <tr key={item.id} className="group hover:bg-emerald-50/45 transition-all duration-200 align-top">
+          <tr key={item._id} className="group hover:bg-emerald-50/45 transition-all duration-200 align-top">
             <td className="p-2.5 font-semibold text-slate-400">{idx + 1}</td>
             <td className="p-2.5 font-semibold text-slate-800 whitespace-normal break-words">{item.assignedBy}</td>
             <td className="p-2.5 font-bold text-slate-900 whitespace-normal break-words">{item.task}</td>
@@ -306,8 +521,8 @@ export default function RnrPage() {
               )}
             </td>
             <td className="p-2.5 text-right space-x-1 whitespace-nowrap">
-              <button type="button" onClick={() => { setEditingFixedId(item.id); setFixedForm(item); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
-              <button type="button" onClick={() => setFixedTasks(fixedTasks.filter(i => i.id !== item.id))} className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => { setEditingFixedId(item._id); setFixedForm(item); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
+              <button type="button" onClick={() => handleDeleteFixedTask(item._id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"><Trash2 className="w-3.5 h-3.5" /></button>
             </td>
           </tr>
         ))}
@@ -315,6 +530,11 @@ export default function RnrPage() {
     </table>
   </div>
 </section>
+{error && (
+  <div className="mb-4 rounded-xl bg-red-100 border border-red-300 p-3 text-sm text-red-700">
+    {error}
+  </div>
+)}
 
         </div>
       </main>

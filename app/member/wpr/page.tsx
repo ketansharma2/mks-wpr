@@ -3,9 +3,13 @@
 import { useState } from 'react';
 import Sidebar from '@/app/components/layout/sidebar/sidebar';
 import { Plus, Trash2, Users, CheckSquare, Calendar, Filter, Edit2 } from 'lucide-react';
-
+import { useEffect } from "react";
+import wprTaskService from "@/services/wprTask.service";
+import meetingService from "@/services/meeting.service";
+import { getErrorMessage } from "@/lib/api-error";
+import fixedTaskService from "@/services/fixedTask.service";
 interface WprItem {
-  id: number;
+  _id: string;
   date: string;
   timeline: string;
   task: string;
@@ -16,7 +20,7 @@ interface WprItem {
 }
 
 interface MeetingItem {
-  id: number;
+  _id: string;
   date: string; // Format: YYYY-MM-DD
   dept: string;
   attendees: string;
@@ -26,7 +30,13 @@ interface MeetingItem {
   status: string;
   notes: string;
 }
+ const getTodayDate = () => new Date().toISOString().split("T")[0];
 
+const getYesterdayDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+};
 export default function WprPage() {
   const getTodayDate = () => new Date().toISOString().split('T')[0];
   const getYesterdayDate = () => {
@@ -40,78 +50,270 @@ export default function WprPage() {
   const [presetValue, setPresetValue] = useState<'today' | 'yesterday'>('today');
   const [startDate, setStartDate] = useState(getYesterdayDate());
   const [endDate, setEndDate] = useState(getTodayDate());
+  const [loading, setLoading] = useState(false);
+const [error, setError] = useState("");
 
-  // Master lists for all tasks & meetings with dates
- const [tasks, setTasks] = useState<WprItem[]>([
-  { id: 1, date: getTodayDate(), timeline: '2026-07-13', task: 'Data Cleaning', trgtMin: '120', type: 'Fixed', status: 'Done', upload: '-' },
-  { id: 2, date: getYesterdayDate(), timeline: '2026-07-12', task: 'Dashboard Update', trgtMin: '180', type: 'Variable', status: 'Done', upload: '-' },
-  { id: 3, date: getYesterdayDate(), timeline: '2026-07-12', task: 'Team Brainstorming', trgtMin: '60', type: 'Team', status: 'In Progress', upload: '-' },
-  { id: 4, date: getTodayDate(), timeline: '2026-07-13', task: 'Fix Bug #404', trgtMin: '45', type: 'Fixed', status: 'In Progress', upload: 'https://docs.google.com/...' },
-  { id: 5, date: getYesterdayDate(), timeline: '2026-07-12', task: 'Weekly Report Generation', trgtMin: '90', type: 'Variable', status: 'Done', upload: '-' },
-  { id: 6, date: getYesterdayDate(), timeline: '2026-07-12', task: 'Internal Audit', trgtMin: '120', type: 'Collab', status: 'On Hold', upload: '-' },
-  { id: 7, date: getTodayDate(), timeline: '2026-07-13', task: 'Database Optimization', trgtMin: '200', type: 'Fixed', status: 'Not Started', upload: '-' },
-  { id: 8, date: getTodayDate(), timeline: '2026-07-13', task: 'Create Presentations', trgtMin: '45', type: 'Unplanned', status: 'Done', upload: '-' },
-]);
-
-const [meetings, setMeetings] = useState<MeetingItem[]>([
-  { id: 1, date: getTodayDate(), dept: 'All', attendees: 'Team Meet', topic: 'Daily Sync', time: '30', propSlot: 'Slot A', status: 'Completed', notes: 'Discussed project pipeline targets' },
-  { id: 2, date: getYesterdayDate(), dept: 'HR', attendees: 'Jyoti Malhotra', topic: 'Management Review', time: '60', propSlot: 'Slot B', status: 'Completed', notes: 'Reviewed weekly KPIs' },
-  { id: 3, date: getYesterdayDate(), dept: 'Sales', attendees: 'Sachin', topic: 'Lead Conversion', time: '45', propSlot: 'Slot A', status: 'Completed', notes: 'Closing potential leads' },
-  { id: 4, date: getTodayDate(), dept: 'Technical', attendees: 'Nitin', topic: 'System Patch', time: '20', propSlot: 'Slot B', status: 'Scheduled', notes: 'Emergency patch deployment' },
-  { id: 5, date: getYesterdayDate(), dept: 'HR', attendees: 'Pardeep chahal', topic: 'Policy Update', time: '30', propSlot: 'Slot C', status: 'Completed', notes: 'New attendance policy' },
-  { id: 6, date: getYesterdayDate(), dept: 'Operations', attendees: 'Virender Kumar', topic: 'Supply Chain Sync', time: '40', propSlot: 'Slot A', status: 'On Hold', notes: 'Vendor delays update' },
-  { id: 7, date: getTodayDate(), dept: 'CEO', attendees: 'Diwakar', topic: 'Q3 Strategy', time: '90', propSlot: 'Slot B', status: 'Proposal', notes: 'Q3 strategy draft review' },
-  { id: 8, date: getTodayDate(), dept: 'Digital Mkg', attendees: 'Ketan Sharma', topic: 'Campaign Launch', time: '25', propSlot: 'Slot C', status: 'Scheduled', notes: 'Social media assets planning' },
-]);
+const [tasks, setTasks] = useState<WprItem[]>([]);
+const [meetings, setMeetings] = useState<MeetingItem[]>([]);
+const [fixedTaskAdded, setFixedTaskAdded] = useState(false);
 
   // Form states
   const [taskForm, setTaskForm] = useState({ date: getTodayDate(), timeline: '', task: '', trgtMin: '', type: '', status: 'In Progress', upload: '' });
-  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [meetingForm, setMeetingForm] = useState({ date: getTodayDate(), dept: '', attendees: '', topic: '', time: '', propSlot: '', status: 'Scheduled', notes: '' });
-  const [editingMeetingId, setEditingMeetingId] = useState<number | null>(null);
+  const [editingMeetingId, setEditingMeetingId] = useState<string | null>(null);
 
-  const handleTaskSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!taskForm.task) return;
-    if (editingTaskId !== null) {
-      setTasks(tasks.map(i => i.id === editingTaskId ? { ...taskForm, id: editingTaskId } : i));
-      setEditingTaskId(null);
-    } else {
-      setTasks([...tasks, { ...taskForm, id: Date.now() }]);
-    }
-    setTaskForm({ date: getTodayDate(), timeline: '', task: '', trgtMin: '', type: '', status: 'In Progress', upload: '' });
-  };
+  
+  useEffect(() => {
+  handleGetTasks();
+  handleGetMeetings();
+}, []);
 
-  const handleMeetingSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!meetingForm.topic) return;
-    if (editingMeetingId !== null) {
-      setMeetings(meetings.map(i => i.id === editingMeetingId ? { ...meetingForm, id: editingMeetingId } : i));
-      setEditingMeetingId(null);
-    } else {
-      setMeetings([...meetings, { ...meetingForm, id: Date.now() }]);
+
+const handleAddFixedTasks = async () => {
+  try {
+    setLoading(true);
+
+    const response = await wprTaskService.addFixedTasks();
+
+    if (!response.success) {
+      setError(response.message);
+      return;
     }
-    setMeetingForm({ date: getTodayDate(), dept: '', attendees: '', topic: '', time: '', propSlot: '', status: 'Scheduled', notes: '' });
-  };
+
+    if (!response.data.added) {
+      setFixedTaskAdded(true);
+      alert("Today's fixed tasks are already added.");
+      return;
+    }
+
+    setFixedTaskAdded(true);
+
+    await handleGetTasks();
+  } catch (err) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleGetTasks = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await wprTaskService.getTasks();
+    console.log("response:",response);
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    setTasks(response.data);
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleGetMeetings = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await meetingService.getMeetings();
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    setMeetings(response.data);
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  const added = tasks.some(
+    task =>
+      task.type === "Fixed" &&
+      task.date.split("T")[0] === getTodayDate()
+  );
+
+  setFixedTaskAdded(added);
+}, [tasks]);
+
+const handleTaskSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    setLoading(true);
+    setError("");
+
+    let response;
+
+    if (editingTaskId) {
+      response = await wprTaskService.updateTask(
+        editingTaskId,
+        {
+          ...taskForm,
+          trgtMin: Number(taskForm.trgtMin),
+        }
+      );
+    } else {
+      response = await wprTaskService.createTask({
+        ...taskForm,
+        trgtMin: Number(taskForm.trgtMin),
+      });
+    }
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    await handleGetTasks();
+
+    setEditingTaskId(null);
+
+    setTaskForm({
+      date: getTodayDate(),
+      timeline: "",
+      task: "",
+      trgtMin: "",
+      type: "",
+      status: "In Progress",
+      upload: "",
+    });
+  } catch (err) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+  
+const handleDeleteTask = async (id: string) => {
+  try {
+    setLoading(true);
+
+    const response = await wprTaskService.deleteTask(id);
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    await handleGetTasks();
+  } catch (err) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleMeetingSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    setLoading(true);
+    setError("");
+
+    let response;
+
+    if (editingMeetingId) {
+      response = await meetingService.updateMeeting(
+        editingMeetingId,
+        {
+          ...meetingForm,
+          time: Number(meetingForm.time),
+        }
+      );
+    } else {
+      response = await meetingService.createMeeting({
+        ...meetingForm,
+        time: Number(meetingForm.time),
+      });
+    }
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    await handleGetMeetings();
+
+    setEditingMeetingId(null);
+
+    setMeetingForm({
+      date: getTodayDate(),
+      dept: "",
+      attendees: "",
+      topic: "",
+      time: "",
+      propSlot: "",
+      status: "Scheduled",
+      notes: "",
+    });
+  } catch (err) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+
+ const handleDeleteMeeting = async (id: string) => {
+  try {
+    setLoading(true);
+
+    const response = await meetingService.deleteMeeting(id);
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    await handleGetMeetings();
+  } catch (err) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Filter logic based on selection
-  const filteredTasks = tasks.filter(item => {
-    if (filterMode === 'preset') {
-      const targetDate = presetValue === 'today' ? getTodayDate() : getYesterdayDate();
-      return item.date === targetDate;
-    } else {
-      return item.date >= startDate && item.date <= endDate;
-    }
-  });
+ const filteredTasks = tasks.filter((item) => {
+  const itemDate = item.date.split("T")[0];
 
-  const filteredMeetings = meetings.filter(item => {
-    if (filterMode === 'preset') {
-      const targetDate = presetValue === 'today' ? getTodayDate() : getYesterdayDate();
-      return item.date === targetDate;
-    } else {
-      return item.date >= startDate && item.date <= endDate;
-    }
-  });
+  if (filterMode === "preset") {
+    const targetDate =
+      presetValue === "today"
+        ? getTodayDate()
+        : getYesterdayDate();
+
+    return itemDate === targetDate;
+  }
+
+  return itemDate >= startDate && itemDate <= endDate;
+});
+
+  const filteredMeetings = meetings.filter((item) => {
+  const itemDate = item.date.split("T")[0];
+
+  if (filterMode === "preset") {
+    const targetDate =
+      presetValue === "today"
+        ? getTodayDate()
+        : getYesterdayDate();
+
+    return itemDate === targetDate;
+  }
+
+  return itemDate >= startDate && itemDate <= endDate;
+});
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row select-none" style={{ fontFamily: 'Cambria, serif' }}>
@@ -186,44 +388,64 @@ const [meetings, setMeetings] = useState<MeetingItem[]>([
     </div>
 
     {/* Auto-Add Fixed Tasks from RnR Button */}
-    <button
-      type="button"
-      onClick={() => {
-        const today = getTodayDate();
-        
-        // Aapke predefined RnR fixed/daily tasks list
-        const fixedRnRTasks = [
-          { task: 'WPR Sheet Fill', trgtMin: '', type: 'Fixed', status: 'Not Started', upload: '-' },
-          { task: 'Daily Sync & Report Update', trgtMin: '', type: 'Fixed', status: 'Not Started', upload: '-' }
-        ];
+<button
+  type="button"
+  disabled={fixedTaskAdded}
+  onClick={async () => {
+    try {
+      setLoading(true);
 
-        // Check karein ki aaj ke liye ye tasks pehle se added toh nahi hain, agar nahi toh add kar dein
-        const newTasksToAdd = fixedRnRTasks.filter(
-          fixedTask => !tasks.some(t => t.date === today && t.task === fixedTask.task)
-        );
+      // Already added today?
+      if (tasks.some(task =>
+        task.type === "Fixed" &&
+        task.date.split("T")[0] === getTodayDate()
+      )) {
+        setFixedTaskAdded(true);
+        alert("Fixed tasks already added today.");
+        return;
+      }
 
-        if (newTasksToAdd.length === 0) {
-          alert('Today\'s fixed tasks are already added!');
-          return;
-        }
+      const today = getTodayDate();
 
-        const formattedNewTasks = newTasksToAdd.map((item, index) => ({
-          id: Date.now() + index,
+      const fixedResponse = await fixedTaskService.getTasks();
+
+      if (!fixedResponse.success) {
+        setError(fixedResponse.message);
+        return;
+      }
+
+      const fixedTasks = fixedResponse.data;
+
+      for (const item of fixedTasks) {
+        await wprTaskService.createTask({
           date: today,
-          timeline: today, // Deadline aaj ki date set ho jayegi kyuki daily task hai
+          timeline: today,
           task: item.task,
-          trgtMin: item.trgtMin,
-          type: item.type,
-          status: item.status,
-          upload: item.upload
-        }));
+          trgtMin: Number(item.trgtMin || 0),
+          type: "Fixed",
+          status: "Not Started",
+          upload: "",
+        });
+      }
 
-        setTasks([...tasks, ...formattedNewTasks]);
-      }}
-      className="px-3 py-1 bg-sky-700 hover:bg-sky-800 text-white rounded-md text-[11px] font-semibold transition shadow-sm  first-letter:uppercase tracking-normal"
-    >
-      + Add Fixed Task
-    </button>
+      setFixedTaskAdded(true);
+      await handleGetTasks();
+
+    } catch (err) {
+      console.error(err);
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }}
+  className={`px-3 py-1 rounded-md text-[11px] font-semibold transition ${
+    fixedTaskAdded
+      ? "bg-gray-400 cursor-not-allowed text-white"
+      : "bg-sky-700 hover:bg-sky-800 text-white"
+  }`}
+>
+  {fixedTaskAdded ? "Fixed Tasks Added" : "+ Add Fixed Task"}
+</button>
   </div>
 
   <form onSubmit={handleTaskSubmit} className="bg-white p-3 rounded-xl border border-sky-200">
@@ -294,11 +516,17 @@ const [meetings, setMeetings] = useState<MeetingItem[]>([
       </tr>
     </thead>
     <tbody className="divide-y divide-sky-100/50 bg-white">
-      {filteredTasks.map((item, idx) => (
-        <tr key={item.id} className="group hover:bg-sky-50/45 transition-all duration-200 align-top">
+      {filteredTasks.map((item, idx) => {
+        const itemDate = item.date.split("T")[0];
+
+  const canEditDelete =
+    itemDate === getTodayDate() ||
+    itemDate === getYesterdayDate();
+        return(
+        <tr key={item._id} className="group hover:bg-sky-50/45 transition-all duration-200 align-top">
           <td className="p-2.5 font-semibold text-slate-400 text-left break-words">{idx + 1}</td>
-          <td className="p-2.5 text-slate-500 text-left break-words">{item.date}</td>
-          <td className="p-2.5 text-slate-700 text-left break-words">{item.timeline}</td>
+          <td className="p-2.5 text-slate-500 text-left break-words">{item.date.split("T")[0]}</td>
+          <td className="p-2.5 text-slate-700 text-left break-words">{item.timeline.split("T")[0]}</td>
           <td className="p-2.5 font-bold text-slate-900 text-left whitespace-normal break-words">{item.task}</td>
           <td className="p-2.5 text-sky-700 font-medium text-left break-words">{item.trgtMin}</td>
           <td className="p-2.5 text-slate-600 text-left whitespace-normal break-words">{item.type}</td>
@@ -313,11 +541,27 @@ const [meetings, setMeetings] = useState<MeetingItem[]>([
             )}
           </td>
           <td className="p-2.5 text-right space-x-1 whitespace-nowrap">
-            <button type="button" onClick={() => { setEditingTaskId(item.id); setTaskForm(item); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
-            <button type="button" onClick={() => setTasks(tasks.filter(i => i.id !== item.id))} className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"><Trash2 className="w-3.5 h-3.5" /></button>
+              {canEditDelete ? (
+                  <>
+            <button type="button" onClick={() => {
+  setEditingTaskId(item._id);
+
+  setTaskForm({
+    date: item.date,
+    timeline: item.timeline,
+    task: item.task,
+    trgtMin: item.trgtMin,
+    type: item.type,
+    status: item.status,
+    upload: item.upload,
+  });
+}} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => handleDeleteTask(item._id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"><Trash2 className="w-3.5 h-3.5" /></button></> ) : (
+    <span className="text-gray-400 text-[11px]">Locked</span>
+  )}
           </td>
-        </tr>
-      ))}
+        </tr>)
+})}
     </tbody>
   </table>
 </div>
@@ -410,10 +654,15 @@ const [meetings, setMeetings] = useState<MeetingItem[]>([
       </tr>
     </thead>
     <tbody className="divide-y divide-amber-100/50 bg-white">
-      {filteredMeetings.map((item, idx) => (
-        <tr key={item.id} className="group hover:bg-amber-50/45 transition-all duration-200 align-top">
+
+      {filteredMeetings.map((item, idx) => {
+          const itemDate = item.date.split("T")[0];
+
+  const canEditDelete = itemDate === getTodayDate();
+        return(
+        <tr key={item._id} className="group hover:bg-amber-50/45 transition-all duration-200 align-top">
           <td className="p-2.5 font-semibold text-slate-400 text-left break-words">{idx + 1}</td>
-          <td className="p-2.5 text-slate-500 text-left break-words">{item.date}</td>
+          <td className="p-2.5 text-slate-500 text-left break-words">{item.date.split("T")[0]}</td>
           <td className="p-2.5 text-slate-700 text-left break-words">{item.dept}</td>
           <td className="p-2.5 text-slate-700 text-left break-words">{item.attendees}</td>
           <td className="p-2.5 font-bold text-slate-900 text-left whitespace-normal break-words">{item.topic}</td>
@@ -422,14 +671,37 @@ const [meetings, setMeetings] = useState<MeetingItem[]>([
           <td className="p-2.5 text-amber-800 font-medium text-left break-words">{item.status}</td>
           <td className="p-2.5 text-slate-600 text-left whitespace-normal break-words">{item.notes}</td>
           <td className="p-2.5 text-right space-x-1 whitespace-nowrap">
-            <button type="button" onClick={() => { setEditingMeetingId(item.id); setMeetingForm(item); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
-            <button type="button" onClick={() => setMeetings(meetings.filter(i => i.id !== item.id))} className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"><Trash2 className="w-3.5 h-3.5" /></button>
+             {canEditDelete ? (
+    <>
+            <button type="button" onClick={() => {
+  setEditingMeetingId(item._id);
+
+  setMeetingForm({
+    date: item.date,
+    dept: item.dept,
+    attendees: item.attendees,
+    topic: item.topic,
+    time: item.time,
+    propSlot: item.propSlot,
+    status: item.status,
+    notes: item.notes,
+  });
+}} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => handleDeleteMeeting(item._id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"><Trash2 className="w-3.5 h-3.5" /></button></> ) : (
+    <span className="text-gray-400 text-[11px]">Locked</span>
+  )}
           </td>
         </tr>
-      ))}
+        )
+})}
     </tbody>
   </table>
 </div>
+{error && (
+  <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-red-700">
+    {error}
+  </div>
+)}
 </section>
 
         </div>

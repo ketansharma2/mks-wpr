@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from "react";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { LayoutDashboard, FileText, ClipboardList, LogOut, Menu, X, User, ShieldCheck, Mail, Lock, Building, Briefcase, HelpCircle, Send } from 'lucide-react';
-
+import memberService from "@/services/member.service";
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-
+  
   // Profile editable/view states
   const [profileData, setProfileData] = useState({
     fullName: 'Sonu',
@@ -21,6 +21,45 @@ export default function Sidebar() {
     email: 'sonu@mksindustrial.com',
     password: 'Sonu@123'
   });
+
+  useEffect(() => {
+  if (!profileModalOpen) return;
+
+  const fetchProfile = async () => {
+    try {
+      const response = await memberService.getProfile();
+      setProfileData({
+      fullName: response.data.data.name,
+      designation: response.data.data.role,
+      department: "",
+      email: response.data.data.email,
+      password: ""
+    });
+    } catch (error) {
+      console.error("Failed to fetch profile", error);
+    }
+  };
+
+  fetchProfile();
+}, [profileModalOpen]);
+const formattedName = profileData.fullName
+  ?.toLowerCase()
+  .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const handleSaveProfile = async () => {
+  try {
+    await memberService.updateProfile({
+      name: profileData.fullName,
+    });
+
+    setIsEditing(false);
+
+    alert("Profile updated successfully");
+  } catch (error) {
+    console.error(error);
+    alert("Failed to update profile");
+  }
+};
 
   // Support / Issue form state
   const [issueText, setIssueText] = useState('');
@@ -136,7 +175,7 @@ export default function Sidebar() {
             <User className="w-5 h-5" />
           </div>
           <div className={`transition-opacity duration-300 whitespace-nowrap overflow-hidden ${!isHovered && 'md:hidden'}`}>
-            <h4 className="text-sm font-bold text-slate-900 leading-tight">Sonu</h4>
+            <h4 className="text-sm font-bold text-slate-900 leading-tight"> {formattedName}</h4>
             <span className="text-xs text-slate-500 font-medium">MKS Member</span>
           </div>
         </div>
@@ -181,7 +220,13 @@ export default function Sidebar() {
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-blue-600">Account Details</h4>
                   <button 
-                    onClick={() => setIsEditing(!isEditing)}
+                    onClick={() => {
+  if (isEditing) {
+    handleSaveProfile();
+  } else {
+    setIsEditing(true);
+  }
+}}
                     className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition font-semibold"
                   >
                     {isEditing ? 'Save Profile' : 'Edit Profile'}

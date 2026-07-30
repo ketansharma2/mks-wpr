@@ -1,10 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from "react";
 import Link from 'next/link';
 import Sidebar from '@/app/components/layout/sidebar/sidebar';
 import { FileText, ClipboardList, CheckCircle2, Clock, ArrowRight, TrendingUp, Calendar, ShieldCheck, CheckSquare, Users, AlertCircle, PlayCircle, XCircle } from 'lucide-react';
+import { getErrorMessage } from "@/lib/api-error";
+import memberService from "@/services/member.service";
+import memberDashboardService from "@/services/memberDashboard.service";
 
+export enum TaskStatus {
+  DONE = "Done",
+  NOT_STARTED = "Not Started",
+  IN_PROGRESS = "In Progress",
+  ON_HOLD = "On Hold",
+  CANCELLED = "Cancelled",
+}
 export default function MemberDashboardPage() {
   // Helper for today's date format (YYYY-MM-DD)
   const getTodayDate = () => {
@@ -16,34 +26,106 @@ export default function MemberDashboardPage() {
 
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState(todayStr);
-
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+  const [allMeetings, setAllMeetings] = useState<any[]>([]);
+  const [userName, setUserName] = useState("");
   // Monthly KPI Stats state
-  const [stats] = useState({
-    totalTasks: 45,
-    completed: 32,
-    notStarted: 4,
-    inProgress: 6,
-    onHold: 2,
-    cancelled: 1,
-    totalMeetingsAttended: 18,
-    wprStreak: 14,
+const [stats, setStats] = useState({
+  totalTasks: 0,
+  completed: 0,
+  notStarted: 0,
+  inProgress: 0,
+  onHold: 0,
+  cancelled: 0,
+  totalMeetings: 0,
+  wprStreak: 0,
+});
+
+
+const [todayTasks, setTodayTasks] = useState<any[]>([]);
+const [todayMeetings, setTodayMeetings] = useState<any[]>([]);
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState("");
+const fetchDashboard = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await memberDashboardService.getDashboard();
+
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
+
+    setStats(response.data.stats);
+    setTodayTasks(response.data.todayTasks);
+    setTodayMeetings(response.data.todayMeetings);
+    setAllTasks(response.data.allTasks);
+    setAllMeetings(response.data.allMeetings);
+    
+  } catch (err: unknown) {
+    setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
+useEffect(() => {
+  const loadDashboard = async () => {
+    await fetchDashboard();
+  };
+
+  loadDashboard();
+}, []);
+
+useEffect(() => {
+  const loadData = async () => {
+    await fetchDashboard();
+
+    try {
+      const profile = await memberService.getProfile();
+      setUserName(profile.data.data.name);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  loadData();
+}, []);
+const applyFilter = () => {
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+
+  const filteredTasks = allTasks.filter((task) => {
+    const taskDate = new Date(task.date);
+    return taskDate >= start && taskDate <= end;
   });
 
-  // Simulated live tasks & meetings list (jismein aaj ki date ke records honge)
-  const [todayTasks] = useState([
-    { id: 1, date: todayStr, task: 'WPR Sheet Fill', trgtMin: '30', type: 'Fixed', status: 'Not Started' },
-    { id: 2, date: todayStr, task: 'Client Sourcing Data Analysis', trgtMin: '120', type: 'Dynamic', status: 'In Progress' },
-    { id: 3, date: todayStr, task: 'Assembly Line Technical Check', trgtMin: '60', type: 'Fixed', status: 'Completed' },
-  ]);
+  const filteredMeetings = allMeetings.filter((meeting) => {
+    const meetingDate = new Date(meeting.date);
+    return meetingDate >= start && meetingDate <= end;
+  });
 
-  const [todayMeetings] = useState([
-    { id: 1, date: todayStr, meeting: 'Morning Operations Sync with Manager', durationMin: '30', status: 'Completed' },
-    { id: 2, date: todayStr, task: 'Technical Architecture Review', durationMin: '45', status: 'Scheduled' },
-  ]);
-
+  setStats({
+  totalTasks: filteredTasks.length,
+  completed: filteredTasks.filter(t => t.status === "Done").length,
+  notStarted: filteredTasks.filter(t => t.status === "Not Started").length,
+  inProgress: filteredTasks.filter(t => t.status === "In Progress").length,
+  onHold: filteredTasks.filter(t => t.status === "On Hold").length,
+  cancelled: filteredTasks.filter(t => t.status === "Cancelled").length,
+  totalMeetings: filteredMeetings.length,
+  wprStreak: stats.wprStreak,
+  });
+};
+ 
+const formattedName =
+  userName.charAt(0).toUpperCase() + userName.slice(1).toLowerCase();
   // Calculations for Today's Summary
   const totalTargetMinutes = todayTasks.reduce((acc, curr) => acc + (Number(curr.trgtMin) || 0), 0);
-  const totalMeetingMinutes = todayMeetings.reduce((acc, curr) => acc + (Number(curr.durationMin) || 0), 0);
+  const totalMeetingMinutes = todayMeetings.reduce((acc, curr) => acc + (Number(curr.time) || 0), 0);
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row select-none">
@@ -59,7 +141,7 @@ export default function MemberDashboardPage() {
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                Welcome back, Sonu Rana
+                Welcome back, {formattedName}
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
                 Here is your daily execution overview and reporting summary.
@@ -125,9 +207,7 @@ export default function MemberDashboardPage() {
 
       <button 
         type="button"
-        onClick={() => {
-          console.log("Filtering WPR summary for range:", startDate, "to", endDate);
-        }}
+        onClick={applyFilter}
         className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition shadow-sm"
       >
         Apply
@@ -171,7 +251,7 @@ export default function MemberDashboardPage() {
 
     <div className="bg-gradient-to-b from-indigo-50/60 to-white p-3.5 rounded-2xl border border-indigo-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-300 flex flex-col justify-between group">
       <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Meetings</span>
-      <span className="text-xl sm:text-2xl font-black text-indigo-950 mt-2 tracking-tight">{stats.totalMeetingsAttended}</span>
+      <span className="text-xl sm:text-2xl font-black text-indigo-950 mt-2 tracking-tight">{stats.totalMeetings}</span>
     </div>
 
     <div className="bg-gradient-to-b from-violet-50/60 to-white p-3.5 rounded-2xl border border-violet-100 shadow-sm hover:shadow-md hover:border-violet-200 transition-all duration-300 flex flex-col justify-between group">
@@ -225,7 +305,7 @@ export default function MemberDashboardPage() {
             <p className="text-xs text-slate-400 text-center py-4">No tasks logged for today.</p>
           ) : (
             todayTasks.map((t) => (
-              <div key={t.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 text-xs">
+              <div key={t._id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 text-xs">
                 <div>
                   <p className="font-bold text-slate-900">{t.task}</p>
                   <span className="text-[10px] text-slate-500">Target: {t.trgtMin || '0'} mins | Type: {t.type}</span>
@@ -261,10 +341,10 @@ export default function MemberDashboardPage() {
             <p className="text-xs text-slate-400 text-center py-4">No meetings scheduled for today.</p>
           ) : (
             todayMeetings.map((m) => (
-              <div key={m.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 text-xs">
+              <div key={m._id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 text-xs">
                 <div>
                   <p className="font-bold text-slate-900">{m.meeting}</p>
-                  <span className="text-[10px] text-slate-500">Duration: {m.durationMin || '0'} mins</span>
+                  <span className="text-[10px] text-slate-500">Duration: {m.time || '0'} mins</span>
                 </div>
                 <span className="px-2 py-1 bg-white font-semibold text-slate-700 border border-slate-200 rounded-lg shadow-2xs whitespace-nowrap">
                   {m.status}
