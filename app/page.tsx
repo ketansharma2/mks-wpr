@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { UserCog, Users, Lock, Mail, ArrowRight } from 'lucide-react';
-
+import authService from "@/services/auth.service";
+import { getErrorMessage } from "@/lib/api-error";
 type UserRole = 'MEMBER' | 'ADMIN';
 
 export default function LoginPage() {
@@ -12,15 +13,39 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('MEMBER');
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedRole === 'ADMIN') {
-      router.push('/admin');
-    } else {
-      router.push('/member');
+  try {
+    setLoading(true);
+    setError("");
+
+    const response = await authService.login({
+      email,
+      password,
+    });
+    
+
+    if (!response.success) {
+      setError(response.message);
+      return;
     }
-  };
+
+    const user = response.data.user;
+
+    if (user.role === "ADMIN") {
+      router.push("/admin");
+    } else {
+      router.push("/member");
+    }
+  } catch (err: unknown) {
+     setError(getErrorMessage(err));
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-slate-100 px-4 sm:px-6 lg:px-8 relative overflow-hidden select-none py-10">
@@ -141,10 +166,21 @@ export default function LoginPage() {
               type="submit"
               className="w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 px-4 bg-gradient-to-b from-blue-500 to-blue-600 text-white font-semibold text-xs sm:text-sm rounded-2xl shadow-[0_8px_20px_rgba(37,99,235,0.35),0_1px_2px_rgba(255,255,255,0.25)_inset] hover:from-blue-600 hover:to-blue-700 active:translate-y-[1px] transition-all"
             >
-              Sign In to {selectedRole === 'ADMIN' ? 'Admin' : 'Member'} Portal
+              {loading
+  ? "Signing In..."
+  : `Sign In to ${
+      selectedRole === "ADMIN"
+        ? "Admin"
+        : "Member"
+    } Portal`}
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+          {error && (
+  <div className="mb-4 rounded-xl bg-red-100 border border-red-300 p-3 text-sm text-red-700">
+    {error}
+  </div>
+)}
         </div>
 
         <p className="text-center text-xs text-slate-500 mt-6 tracking-wide font-medium">
