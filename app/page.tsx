@@ -66,7 +66,7 @@ export default function LoginPage() {
           {/* Logo Left Container with Dark Invert/Filter so dark logo appears properly on white */}
           <div className="w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0 flex items-center justify-center relative">
             <Image
-              src="/MKS_logo2.png"
+              src="/MKS_Logo2.png"
               alt="MKS Logo"
               width={120}
               height={120}
