@@ -30,7 +30,7 @@ export default function Sidebar() {
       const response = await memberService.getProfile();
       setProfileData({
       fullName: response.data.data.name,
-      designation: response.data.data.role,
+      designation: response.data.data.designation,
       department: response.data.data.department,
       email: response.data.data.email,
       password: ""

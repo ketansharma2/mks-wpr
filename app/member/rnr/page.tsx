@@ -313,7 +313,7 @@ const handleSaveOverview = async () => {
       <button
   type="button"
   onClick={handleSaveOverview}
-  className="..."
+  className="flex items-center gap-1.5 py-2 px-4 bg-gradient-to-b from-blue-500 to-blue-600 text-white font-semibold text-xs rounded-xl shadow-sm hover:from-blue-600 hover:to-blue-700 transition"
 >
   <Save className="w-3.5 h-3.5" />
   {loading ? "Saving..." : "Save Overview"}

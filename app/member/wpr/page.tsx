@@ -547,8 +547,9 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
   setEditingTaskId(item._id);
 
   setTaskForm({
-    date: item.date,
-    timeline: item.timeline,
+    date: item.date?.split("T")[0],
+    timeline: item.timeline?.split("T")[0],
+
     task: item.task,
     trgtMin: item.trgtMin,
     type: item.type,
@@ -677,7 +678,7 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
   setEditingMeetingId(item._id);
 
   setMeetingForm({
-    date: item.date,
+    date: item.date?.split("T")[0],
     dept: item.dept,
     attendees: item.attendees,
     topic: item.topic,
