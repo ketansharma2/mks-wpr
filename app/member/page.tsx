@@ -343,7 +343,7 @@ const formattedName =
             todayMeetings.map((m) => (
               <div key={m._id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 text-xs">
                 <div>
-                  <p className="font-bold text-slate-900">{m.meeting}</p>
+                  <p className="font-bold text-slate-900">{m.topic}</p>
                   <span className="text-[10px] text-slate-500">Duration: {m.time || '0'} mins</span>
                 </div>
                 <span className="px-2 py-1 bg-white font-semibold text-slate-700 border border-slate-200 rounded-lg shadow-2xs whitespace-nowrap">
