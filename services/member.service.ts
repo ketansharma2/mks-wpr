@@ -21,6 +21,8 @@ class MemberService {
 
   async updateProfile(data: {
   name: string;
+  role: string;
+  department: string;
 }) {
   const response = await api.put(
     "/members/profile",

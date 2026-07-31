@@ -15,15 +15,15 @@ export default function Sidebar() {
   
   // Profile editable/view states
   const [profileData, setProfileData] = useState({
-    fullName: 'Sonu',
-    designation: 'MKS Member / Software User / Data Analyst',
-    department: 'Technical',
-    email: 'sonu@mksindustrial.com',
-    password: 'Sonu@123'
+    fullName: '',
+    designation: '',
+    department: '',
+    email: '',
+    password: ''
   });
 
   useEffect(() => {
-  if (!profileModalOpen) return;
+ 
 
   const fetchProfile = async () => {
     try {
@@ -31,7 +31,7 @@ export default function Sidebar() {
       setProfileData({
       fullName: response.data.data.name,
       designation: response.data.data.role,
-      department: "",
+      department: response.data.data.department,
       email: response.data.data.email,
       password: ""
     });
@@ -50,6 +50,8 @@ const handleSaveProfile = async () => {
   try {
     await memberService.updateProfile({
       name: profileData.fullName,
+      role: profileData.designation,
+     department: profileData.department,
     });
 
     setIsEditing(false);
@@ -169,7 +171,7 @@ const handleSaveProfile = async () => {
         <div 
           onClick={() => setProfileModalOpen(true)}
           className={`mx-4 mb-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl transition-all duration-300 flex items-center gap-3.5 cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 group ${!isHovered && 'md:justify-center md:mx-2 md:p-2'}`}
-          title={!isHovered ? 'Sonu (MKS Member)' : undefined}
+          title={!isHovered ? `${profileData.fullName} (MKS Member)` : undefined}
         >
           <div className="w-10 h-10 flex-shrink-0 bg-blue-100 border border-blue-200 rounded-xl flex items-center justify-center text-blue-600 font-bold group-hover:scale-105 transition-transform">
             <User className="w-5 h-5" />
