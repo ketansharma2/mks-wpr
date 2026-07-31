@@ -89,7 +89,7 @@ const handleSaveProfile = async () => {
       <div className="md:hidden bg-white text-slate-900 flex items-center justify-between p-4 border-b border-slate-200 sticky top-0 z-50 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 relative flex-shrink-0 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden p-1">
-            <Image src="/MKS_logo2.png" alt="MKS Logo" width={40} height={40} className="w-full h-full object-cover rounded-lg" priority />
+            <Image src="/MKS_Logo2.png" alt="MKS Logo" width={40} height={40} className="w-full h-full object-cover rounded-lg" priority />
           </div>
           <span className="text-sm font-bold tracking-wider">MKS Industrial Solutions</span>
         </div>
@@ -127,7 +127,7 @@ const handleSaveProfile = async () => {
             <div className="w-16 h-16 mx-auto flex-shrink-0 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center shadow-xs relative overflow-hidden p-0">
               <div className="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-transparent pointer-events-none" />
               <Image
-                src="/MKS_logo2.png"
+                src="/MKS_Logo2.png"
                 alt="MKS Logo"
                 width={100}
                 height={100}
