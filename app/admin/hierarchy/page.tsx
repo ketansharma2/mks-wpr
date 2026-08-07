@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from "react";
+import adminHierarchyService from "@/services/adminHierarchy.service";
 import AdminSidebar from '@/app/components/layout/sidebar/admin-sidebar';
 import { Building, ShieldCheck, FileText, Upload, Trash2, ExternalLink, Network, CheckCircle2 } from 'lucide-react';
 
@@ -13,39 +14,84 @@ export default function AdminHierarchyPage() {
   ]);
 
   // PDF state for Canva downloaded PDF chart
-  const [pdfDocuments, setPdfDocuments] = useState([
-    { id: 1, title: 'Company Master Organizational Hierarchy Chart', uploadDate: '2026-07-15', fileSize: '1.8 MB', fileUrl: '#' },
-  ]);
+const [pdfDocuments, setPdfDocuments] = useState<any[]>([]);
+const [loading, setLoading] = useState(false);
 
   const [newTitle, setNewTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  const handleUploadPDF = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle) return;
+  useEffect(() => {
+  fetchDocuments();
+}, []);
 
-    const newPdfObj = {
-      id: pdfDocuments.length + 1,
-      title: newTitle,
-      uploadDate: new Date().toISOString().split('T')[0],
-      fileSize: selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : '1.5 MB',
-      fileUrl: '#'
-    };
+const fetchDocuments = async () => {
+  try {
+    setLoading(true);
 
-    setPdfDocuments([...pdfDocuments, newPdfObj]);
+    const response =
+      await adminHierarchyService.getDocuments();
+
+    setPdfDocuments(response.data);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleUploadPDF = async (
+  e: React.FormEvent
+) => {
+  e.preventDefault();
+
+  if (!selectedFile || !newTitle) return;
+
+  try {
+    const formData = new FormData();
+
+    formData.append("title", newTitle);
+    formData.append("file", selectedFile);
+
+    await adminHierarchyService.uploadDocument(
+      formData
+    );
+
+    await fetchDocuments();
+
     setUploadSuccess(true);
-    setNewTitle('');
+
+    setNewTitle("");
     setSelectedFile(null);
 
-    setTimeout(() => setUploadSuccess(false), 3000);
-  };
+    setTimeout(() => {
+      setUploadSuccess(false);
+    }, 3000);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
-  const handleDeletePDF = (id: number) => {
-    if (confirm('Are you sure you want to delete this PDF?')) {
-      setPdfDocuments(pdfDocuments.filter(p => p.id !== id));
-    }
-  };
+ const handleDeletePDF = async (
+  id: string
+) => {
+  if (
+    !confirm(
+      "Are you sure you want to delete this PDF?"
+    )
+  )
+    return;
+
+  try {
+    await adminHierarchyService.deleteDocument(
+      id
+    );
+
+    await fetchDocuments();
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row select-none">
@@ -98,16 +144,16 @@ export default function AdminHierarchyPage() {
                       </tr>
                     ) : (
                       pdfDocuments.map((doc) => (
-                        <tr key={doc.id} className="hover:bg-slate-50/60 transition">
+                        <tr key={doc._id} className="hover:bg-slate-50/60 transition">
                           <td className="p-3 font-bold text-slate-900 flex items-center gap-2">
                             <FileText className="w-4 h-4 text-rose-500 flex-shrink-0" />
                             {doc.title}
                           </td>
-                          <td className="p-3 font-mono text-slate-500">{doc.uploadDate}</td>
-                          <td className="p-3 font-mono text-slate-600">{doc.fileSize}</td>
+                          <td className="p-3 font-mono text-slate-500">{new Date(doc.createdAt).toLocaleDateString()}</td>
+                          <td className="p-3 font-mono text-slate-600">{(doc.fileSize / (1024 * 1024)).toFixed(2)} MB</td>
                           <td className="p-3 text-right space-x-2">
                             <a
-                              href={doc.fileUrl}
+                              href={`${doc.fileUrl}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-lg transition inline-flex items-center gap-1 border border-blue-200"
@@ -115,7 +161,7 @@ export default function AdminHierarchyPage() {
                               <ExternalLink className="w-3 h-3" /> View PDF
                             </a>
                             <button
-                              onClick={() => handleDeletePDF(doc.id)}
+                              onClick={() => handleDeletePDF(doc._id)}
                               className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition inline-flex items-center"
                               title="Delete PDF"
                             >

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from "react";
+import adminHelpService from "@/services/adminHelp.service";
 import AdminSidebar from '@/app/components/layout/sidebar/admin-sidebar';
 import { HelpCircle, ShieldCheck, CheckCircle2, Calendar, Search, Filter, MessageSquare, X } from 'lucide-react';
 
@@ -14,12 +15,11 @@ export default function AdminHelpPage() {
   const todayStr = getTodayDate();
 
   // Mock member issues database
-  const [memberIssues, setMemberIssues] = useState([
-    { id: 1, memberName: 'Sonu Rana', department: 'Technical', issueDate: '2026-07-12', issue: 'Faced minor latency while loading the WPR task summary table during morning sync.', status: 'Pending', resolvedDate: '-', remark: '-' },
-    { id: 2, memberName: 'Aman Verma', department: 'Operations', issueDate: '2026-07-10', issue: 'Requesting permission update for accessing monthly maintenance report templates.', status: 'Resolved', resolvedDate: '2026-07-11', remark: 'Permissions updated successfully.' },
-    { id: 3, memberName: 'Neha Sharma', department: 'Sales', issueDate: '2026-07-14', issue: 'Unable to attach Google Sheets deliverable link to Task #1. Please check URL input validator.', status: 'Pending', resolvedDate: '-', remark: '-' },
-  ]);
+const [memberIssues, setMemberIssues] =
+useState<any[]>([]);
 
+const [loading, setLoading] =
+useState(false);
   // Filters State
   const [startDate, setStartDate] = useState('2026-07-01');
   const [endDate, setEndDate] = useState(todayStr);
@@ -31,42 +31,73 @@ export default function AdminHelpPage() {
   const [newStatus, setNewStatus] = useState('Resolved');
   const [newRemark, setNewRemark] = useState('');
 
-  const openUpdateModal = (id: number, currentRemark: string, currentStatus: string) => {
-    setActiveIssueId(id);
-    setNewStatus(currentStatus === 'Pending' ? 'Resolved' : currentStatus);
-    setNewRemark(currentRemark === '-' ? '' : currentRemark);
-    setIsModalOpen(true);
-  };
+  useEffect(() => {
+  fetchIssues();
+}, [startDate, endDate, statusFilter]);
 
-  const handleUpdateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (activeIssueId === null) return;
+const fetchIssues = async () => {
+  try {
+    setLoading(true);
 
-    setMemberIssues(prev =>
-      prev.map(item => {
-        if (item.id === activeIssueId) {
-          return {
-            ...item,
-            status: newStatus,
-            resolvedDate: newStatus === 'Resolved' ? todayStr : '-',
-            remark: newRemark.trim() ? newRemark : 'No remarks provided'
-          };
-        }
-        return item;
-      })
-    );
+    const response =
+      await adminHelpService.getIssues({
+        startDate,
+        endDate,
+        status:
+          statusFilter === "All"
+            ? ""
+            : statusFilter,
+      });
 
-    setIsModalOpen(false);
-    setActiveIssueId(null);
-    setNewRemark('');
-  };
+    setMemberIssues(response.data.items);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const openUpdateModal = async (
+  id: string
+) => {
+  const response =
+    await adminHelpService.getIssue(id);
+
+  const issue = response.data;
+
+  setActiveIssueId(issue._id);
+
+  setNewStatus(issue.status);
+
+  setNewRemark(issue.remark);
+
+  setIsModalOpen(true);
+};
+const handleUpdateSubmit = async (
+  e: React.FormEvent
+) => {
+  e.preventDefault();
+
+  if (!activeIssueId) return;
+
+  await adminHelpService.updateIssue(
+    String(activeIssueId),
+    {
+      status: newStatus,
+      remark: newRemark,
+    }
+  );
+
+  setIsModalOpen(false);
+
+  setActiveIssueId(null);
+
+  setNewRemark("");
+
+  fetchIssues();
+};
 
   // Filter logic
-  const filteredIssues = memberIssues.filter(item => {
-    let matchesDate = item.issueDate >= startDate && item.issueDate <= endDate;
-    let matchesStatus = statusFilter === 'All' || item.status === statusFilter;
-    return matchesDate && matchesStatus;
-  });
+const filteredIssues =
+memberIssues;
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row select-none">
@@ -174,12 +205,12 @@ export default function AdminHelpPage() {
                     </tr>
                   ) : (
                     filteredIssues.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/60 transition">
-                        <td className="p-3 font-mono text-slate-500">{item.issueDate}</td>
-                        <td className="p-3 font-bold text-slate-900">{item.memberName}</td>
+                      <tr key={item._id} className="hover:bg-slate-50/60 transition">
+                        <td className="p-3 font-mono text-slate-500">{new Date(item.issueDate).toLocaleDateString()}</td>
+                        <td className="p-3 font-bold text-slate-900">{item.user?.name}</td>
                         <td className="p-3">
                           <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-semibold text-[11px]">
-                            {item.department}
+                            {item.user?.department}
                           </span>
                         </td>
                         <td className="p-3 text-slate-800 max-w-xs truncate" title={item.issue}>{item.issue}</td>
@@ -190,11 +221,15 @@ export default function AdminHelpPage() {
                             {item.status}
                           </span>
                         </td>
-                        <td className="p-3 font-mono text-slate-600">{item.resolvedDate}</td>
+                        <td className="p-3 font-mono text-slate-600">{item.resolvedDate
+  ? new Date(
+      item.resolvedDate
+    ).toLocaleDateString()
+  : "-"}</td>
                         <td className="p-3 text-slate-600 max-w-xs truncate" title={item.remark}>{item.remark}</td>
                         <td className="p-3 text-right">
                           <button
-                            onClick={() => openUpdateModal(item.id, item.remark, item.status)}
+                            onClick={() => openUpdateModal(item._id)}
                             className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-xl transition border border-blue-200"
                           >
                             Update

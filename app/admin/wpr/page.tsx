@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from "react";
+import adminWprService from "@/services/adminWpr.service";
 import AdminSidebar from '@/app/components/layout/sidebar/admin-sidebar';
 import { FileText, Users, Calendar } from 'lucide-react';
 
@@ -23,38 +24,59 @@ export default function AdminWPRHubPage() {
 
   // Mock Master Tasks WPR records submitted across all members
  // Master Tasks WPR records submitted across all members with deadline and uploadClosing fields
-  const [allTasksWPR] = useState([
-    { id: 1, memberName: 'Sonu Rana', department: 'Technical', date: todayStr, deadline: todayStr, task: 'WPR Sheet Automation', trgtMin: '30', type: 'Fixed', status: 'Completed', uploadClosing: 'https://docs.google.com/spreadsheets/d/1DEREIFk0989UfUZrgVM8py_B8eSKJdfcUQjONp1C-QI/edit' },
-    { id: 2, memberName: 'Sonu Rana', department: 'Technical', date: todayStr, deadline: todayStr, task: 'Client Sourcing Data Analysis', trgtMin: '120', type: 'Dynamic', status: 'In Progress', uploadClosing: '-' },
-    { id: 3, memberName: 'Aman Verma', department: 'Operations', date: todayStr, deadline: todayStr, task: 'Assembly Line Technical Check', trgtMin: '60', type: 'Fixed', status: 'Completed', uploadClosing: '-' },
-    { id: 4, memberName: 'Neha Sharma', department: 'Sales', date: '2026-07-14', deadline: '2026-07-14', task: 'Regional Target Allocation', trgtMin: '90', type: 'Dynamic', status: 'Completed', uploadClosing: '-' },
-  ]);
+const [allTasksWPR, setAllTasksWPR] = useState<any[]>([]);
 
-  // Mock Master Meetings WPR records submitted across all members
- // Master Meetings WPR records submitted across all members with coPerson, timeSlot, and notes fields
-  const [allMeetingsWPR] = useState([
-    { id: 1, memberName: 'Sonu Rana', department: 'Technical', date: todayStr, coPerson: 'Vijyant Malik', meeting: 'Morning Operations Sync with Manager', durationMin: '30', timeSlot: '09:30 - 10:00', status: 'Completed', notes: 'Discussed daily sprint deliverables.' },
-    { id: 2, memberName: 'Sonu Rana', department: 'Technical', date: todayStr, coPerson: 'Nitin', meeting: 'Technical Architecture Review', durationMin: '45', timeSlot: '11:00 - 11:45', status: 'Scheduled', notes: 'Reviewing Next.js component hierarchy.' },
-    { id: 3, memberName: 'Aman Verma', department: 'Operations', date: todayStr, coPerson: 'Pardeep Chahal', meeting: 'Floor Safety Audit', durationMin: '60', timeSlot: '14:00 - 15:00', status: 'Completed', notes: 'Verified mechanical tolerances.' },
-    { id: 4, memberName: 'Neha Sharma', department: 'Sales', date: '2026-07-14', coPerson: 'Satender Sharma', meeting: 'Client Sourcing Strategy', durationMin: '45', timeSlot: '16:00 - 16:45', status: 'Completed', notes: 'Allocated North sector pipeline targets.' },
-  ]);
+const [allMeetingsWPR, setAllMeetingsWPR] = useState<any[]>([]);
+
+const [loading, setLoading] = useState(false);
 
   // Unique member names for filter dropdown
-  const memberList = ['All', 'Sonu Rana', 'Aman Verma', 'Neha Sharma'];
+const [memberList, setMemberList] = useState<any[]>([]);
+
+const loadMembers = async () => {
+  const res = await adminWprService.getMembers();
+  setMemberList(res.data);};
+
+useEffect(() => {
+  loadMembers();
+}, []);
+useEffect(() => {
+  loadData();
+}, [activeTab, filterName, startDate, endDate]);
+
+const loadData = async () => {
+  try {
+    setLoading(true);
+
+    const params = {
+      memberId : filterName === "All" ? "" : filterName,
+      startDate,
+      endDate,
+    };
+
+    if (activeTab === "tasks") {
+      const res =
+        await adminWprService.getTasks(params);
+       console.log("Fetched Tasks WPR:", res.data);
+
+      setAllTasksWPR(res.data.items);
+    } else {
+      const res =
+        await adminWprService.getMeetings(params);
+       console.log("Fetched Meetings WPR:", res.data);
+      setAllMeetingsWPR(res.data.items);
+    }
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Filtered Tasks WPR logic
-  const filteredTasks = allTasksWPR.filter(item => {
-    let matchesName = filterName === 'All' || item.memberName === filterName;
-    let matchesDate = item.date >= startDate && item.date <= endDate;
-    return matchesName && matchesDate;
-  });
+ const filteredTasks = allTasksWPR;
 
-  // Filtered Meetings WPR logic
-  const filteredMeetings = allMeetingsWPR.filter(item => {
-    let matchesName = filterName === 'All' || item.memberName === filterName;
-    let matchesDate = item.date >= startDate && item.date <= endDate;
-    return matchesName && matchesDate;
-  });
+const filteredMeetings = allMeetingsWPR;
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row select-none">
@@ -91,9 +113,11 @@ export default function AdminWPRHubPage() {
       className="w-full xl:w-56 bg-slate-50 border border-slate-200 text-slate-900 px-3 py-2 rounded-xl text-xs font-semibold outline-none focus:border-blue-500"
     >
       <option value="All">Filter by Member: All</option>
-      {memberList.filter(m => m !== 'All').map(name => (
-        <option key={name} value={name}>{name}</option>
-      ))}
+{memberList.map((member: any) => (
+  <option key={member._id} value={member._id}>
+    {member.name}
+  </option>
+))}
     </select>
   </div>
 
@@ -187,10 +211,12 @@ export default function AdminWPRHubPage() {
             </tr>
           ) : (
             filteredTasks.map((t) => (
-              <tr key={t.id} className="hover:bg-slate-50/60 transition">
-                <td className="p-3 font-bold text-slate-900">{t.memberName}</td>
-                <td className="p-3 font-mono text-slate-500">{t.date}</td>
-                <td className="p-3 font-mono text-slate-600">{t.deadline || t.date}</td>
+              <tr key={t._id} className="hover:bg-slate-50/60 transition">
+                <td className="p-3 font-bold text-slate-900">{t.user.name}</td>
+                <td className="p-3 font-mono text-slate-500"> {new Date(t.date).toLocaleDateString("en-GB")}</td>
+                <td className="p-3 font-mono text-slate-600"> {t.deadline
+    ? new Date(t.deadline).toLocaleDateString("en-GB")
+    : new Date(t.date).toLocaleDateString("en-GB")}</td>
                 <td className="p-3 font-semibold text-slate-900">{t.task}</td>
                 <td className="p-3 font-mono text-amber-700 font-semibold">{t.trgtMin} mins</td>
                 <td className="p-3 text-slate-600">{t.type}</td>
@@ -253,12 +279,12 @@ export default function AdminWPRHubPage() {
             </tr>
           ) : (
             filteredMeetings.map((m) => (
-              <tr key={m.id} className="hover:bg-slate-50/60 transition">
-                <td className="p-3 font-mono text-slate-500">{m.date}</td>
-                <td className="p-3 font-bold text-slate-900">{m.memberName}</td>
+              <tr key={m._id} className="hover:bg-slate-50/60 transition">
+                <td className="p-3 font-mono text-slate-500">{new Date(m.date).toLocaleDateString("en-GB")}</td>
+                <td className="p-3 font-bold text-slate-900">{m.user?.name || 'Unknown Member'}</td>
                 <td className="p-3">
                   <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-semibold text-[11px]">
-                    {m.department}
+                    {m.user.department}
                   </span>
                 </td>
                 <td className="p-3 text-slate-700 font-medium">{m.coPerson || 'Client / Team'}</td>
