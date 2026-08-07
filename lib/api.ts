@@ -10,10 +10,33 @@ const api = axios.create({
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const isLoginRequest = error.config?.url?.includes("/auth/login");
-    if (error.response?.status === 401 && !isLoginRequest) {
-      window.location.href = "/";
+
+  async (error) => {
+    const originalRequest = error.config;
+
+    const isLoginRequest =
+      originalRequest?.url?.includes("/auth/login");
+
+    const isRefreshRequest =
+      originalRequest?.url?.includes("/auth/refresh");
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isLoginRequest &&
+      !isRefreshRequest
+    ) {
+      originalRequest._retry = true;
+
+      try {
+        // Browser automatically sends HttpOnly cookies
+        await api.post("/auth/refresh");
+
+        // Retry original request
+        return api(originalRequest);
+      } catch {
+        window.location.href = "/";
+      }
     }
 
     return Promise.reject(error);

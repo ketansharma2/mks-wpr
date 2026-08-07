@@ -1,24 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from "react";
+import adminDashboardService from "@/services/adminDashboard.service";
 import Link from 'next/link';
 import AdminSidebar from '@/app/components/layout/sidebar/admin-sidebar';
 import { Users, FileText, Building, HelpCircle, ShieldCheck, ArrowUpRight, ExternalLink } from 'lucide-react';
-
+import activityLogService from "@/services/activityLog.service";
 export default function AdminDashboardPage() {
-  const [stats] = useState({
-    totalMembers: 12,
-    activeTasksWPR: 28,
-    pendingSupportTickets: 2,
-    companyDocs: 4
-  });
+  const [stats, setStats] = useState({
+  totalMembers: 0,
+  todayWprSubmitted: 0,
+  pendingSupportTickets: 0,
+  companyDocs: 0,
+});
 
-  const [recentActivities] = useState([
-    { id: 1, type: 'WPR', text: 'Sonu Rana submitted task WPR: WPR Sheet Automation', time: '10m ago', status: 'Completed' },
-    { id: 2, type: 'SUPPORT', text: 'Neha Sharma raised a support ticket regarding Google Sheets validator', time: '1h ago', status: 'Pending' },
-    { id: 3, type: 'MEMBER', text: 'Aman Verma profile credentials updated by Admin', time: '3h ago', status: 'Active' },
-    { id: 4, type: 'HIERARCHY', text: 'New Canva Hierarchy PDF chart version uploaded', time: '1d ago', status: 'Updated' },
-  ]);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+  fetchDashboard();
+}, []);
+
+const fetchDashboard = async () => {
+  try {
+    setLoading(true);
+
+  const [dashboard, logs] = await Promise.all([
+  adminDashboardService.getDashboard(),
+  activityLogService.getLogs({
+    limit: 10,
+  }),
+]);
+    setStats({
+      totalMembers:
+    dashboard.data.stats.totalMembers,
+
+  todayWprSubmitted:
+    dashboard.data.stats.todayWprSubmitted,
+
+  pendingSupportTickets:
+    dashboard.data.stats.pendingIssues,
+
+  companyDocs:
+    dashboard.data.stats.totalRoleOverview,
+    });
+    setActivityLogs(logs.data.items);
+    
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row select-none">
@@ -75,7 +109,7 @@ export default function AdminDashboardPage() {
             <Link href="/admin/wpr" className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:border-blue-300 transition group flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">WPR Execution</span>
-                <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.activeTasksWPR}</h3>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.todayWprSubmitted}</h3>
               </div>
               <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-105 transition">
                 <FileText className="w-4 h-4" />
@@ -94,7 +128,7 @@ export default function AdminDashboardPage() {
 
             <Link href="/admin/help" className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm hover:border-blue-300 transition group flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Support Tickets</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Tickets</span>
                 <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.pendingSupportTickets}</h3>
               </div>
               <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 group-hover:scale-105 transition">
@@ -112,26 +146,39 @@ export default function AdminDashboardPage() {
   </div>
 
   <div className="space-y-2">
-    {recentActivities.map((act) => (
-      <div key={act.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="px-2 py-1 bg-blue-100 text-blue-700 font-bold rounded-lg text-[10px] flex-shrink-0">
-            {act.type}
-          </span>
-          <p className="font-semibold text-slate-900 truncate">{act.text}</p>
-        </div>
-        
-        <div className="flex items-center gap-2.5 flex-shrink-0">
-          <span className="text-[10px] text-slate-400 font-mono">{act.time}</span>
-          <span className={`px-2 py-0.5 rounded font-semibold text-[10px] whitespace-nowrap ${
-            act.status === 'Completed' || act.status === 'Active' || act.status === 'Updated' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
-          }`}>
-            {act.status}
-          </span>
+  {activityLogs.map((log: any) => (
+    <div
+      key={log._id}
+      className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between gap-3 text-xs"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="px-2 py-1 bg-blue-100 text-blue-700 font-bold rounded-lg text-[10px]">
+          {log.module}
+        </span>
+
+        <div className="min-w-0">
+          <p className="font-semibold text-slate-900 truncate">
+            {log.description}
+          </p>
+
+          <p className="text-[11px] text-slate-500">
+            {log.name} • {log.role}
+          </p>
         </div>
       </div>
-    ))}
-  </div>
+
+      <div className="text-right flex-shrink-0">
+        <p className="text-[10px] text-slate-400">
+          {new Date(log.createdAt).toLocaleString("en-IN")}
+        </p>
+
+        <span className="inline-block mt-1 px-2 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-semibold">
+          {log.action}
+        </span>
+      </div>
+    </div>
+  ))}
+</div>
 </div>
 
         </div>

@@ -1,6 +1,6 @@
 'use client';
-
-import { useState } from 'react';
+import { useEffect, useState } from "react";
+import adminMemberService from "@/services/adminMember.service";
 import Link from 'next/link';
 import AdminSidebar from '@/app/components/layout/sidebar/admin-sidebar';
 import { Users, UserPlus, ShieldCheck, Mail, Lock, Building, Briefcase, Edit3, X, Check, Search, Eye, EyeOff } from 'lucide-react';
@@ -12,12 +12,10 @@ export default function AdminMembersPage() {
     return d.toISOString().split('T')[0];
   };
 
+
   // Members list state with all requested schema fields
-  const [members, setMembers] = useState([
-    { id: 1, createDate: '2026-01-15', name: 'Sonu Rana', email: 'sonu@mksindustrial.com', password: 'Sonu@123', department: 'Technical', designation: 'Data Analyst', userType: 'MEMBER', status: 'Active' },
-    { id: 2, createDate: '2026-02-10', name: 'Aman Verma', email: 'aman@mksindustrial.com', password: 'Aman@456', department: 'Operations', designation: 'Floor Supervisor', userType: 'MEMBER', status: 'Active' },
-    { id: 3, createDate: '2026-03-01', name: 'Neha Sharma', email: 'neha@mksindustrial.com', password: 'Neha@789', department: 'Sales', designation: 'Sales Executive', userType: 'MEMBER', status: 'Active' },
-  ]);
+  const [members, setMembers] = useState<any[]>([]);
+const [loading, setLoading] = useState(false);
 
   // State to toggle password visibility row-wise or globally for admin view
   const [showPasswords, setShowPasswords] = useState<Record<number, boolean>>({});
@@ -45,72 +43,92 @@ export default function AdminMembersPage() {
     setShowPasswords(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Handle Add Member Form Submit
-  const handleAddMember = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formName || !formEmail || !formPassword) return;
 
-    const newMemberObj = {
-      id: members.length + 1,
-      createDate: getTodayDate(),
+   const handleAddMember = async (
+  e: React.FormEvent
+) => {
+  e.preventDefault();
+
+  await adminMemberService.createMember({
+    name: formName,
+    email: formEmail,
+    password: formPassword,
+    department: formDepartment,
+    designation: formDesignation,
+    role: formUserType,
+    isActive: formStatus === "Active",
+  });
+
+  await fetchMembers();
+
+  setIsAddModalOpen(false);
+
+  resetForm();
+};
+
+  // Handle Add Member Form Submit
+ 
+
+  // Open Edit Modal
+  const handleOpenEdit = async (
+  member: any
+) => {
+
+  const response =
+    await adminMemberService.getMember(
+      member._id
+    );
+
+  const data = response.data;
+
+  setActiveMemberId(data._id);
+
+  setFormName(data.name);
+
+  setFormEmail(data.email);
+
+  setFormPassword("");
+
+  setFormDepartment(data.department);
+
+  setFormDesignation(data.designation);
+
+  setFormUserType(data.role);
+
+  setFormStatus(
+    data.isActive ? "Active" : "Inactive"
+  );
+
+  setIsEditModalOpen(true);
+};
+
+  // Handle Edit Member Form Submit
+  const handleUpdateMember = async (
+  e: React.FormEvent
+) => {
+  e.preventDefault();
+
+  if (!activeMemberId) return;
+
+  await adminMemberService.updateMember(
+    String(activeMemberId),
+    {
       name: formName,
       email: formEmail,
       password: formPassword,
       department: formDepartment,
-      designation: formDesignation || 'Professional',
-      userType: formUserType,
-      status: formStatus
-    };
+      designation: formDesignation,
+      role: formUserType,
+      isActive: formStatus === "Active",
+    }
+  );
 
-    setMembers([...members, newMemberObj]);
-    setSuccessMsg(true);
+  await fetchMembers();
 
-    setTimeout(() => {
-      setSuccessMsg(false);
-      setIsAddModalOpen(false);
-      resetForm();
-    }, 1200);
-  };
+  setIsEditModalOpen(false);
 
-  // Open Edit Modal
-  const handleOpenEdit = (member: any) => {
-    setActiveMemberId(member.id);
-    setFormName(member.name);
-    setFormEmail(member.email);
-    setFormPassword(member.password);
-    setFormDepartment(member.department);
-    setFormDesignation(member.designation);
-    setFormUserType(member.userType);
-    setFormStatus(member.status);
-    setIsEditModalOpen(true);
-  };
-
-  // Handle Edit Member Form Submit
-  const handleUpdateMember = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (activeMemberId === null) return;
-
-    setMembers(prev =>
-      prev.map(m => m.id === activeMemberId ? {
-        ...m,
-        name: formName,
-        email: formEmail,
-        password: formPassword,
-        department: formDepartment,
-        designation: formDesignation,
-        userType: formUserType,
-        status: formStatus
-      } : m)
-    );
-
-    setSuccessMsg(true);
-    setTimeout(() => {
-      setSuccessMsg(false);
-      setIsEditModalOpen(false);
-      setActiveMemberId(null);
-      resetForm();
-    }, 1200);
-  };
+  resetForm();
+};
 
   const resetForm = () => {
     setFormName('');
@@ -128,6 +146,24 @@ export default function AdminMembersPage() {
     let matchesDept = deptFilter === 'All' || m.department === deptFilter;
     return matchesSearch && matchesDept;
   });
+
+
+useEffect(() => {
+  fetchMembers();
+}, []);
+
+const fetchMembers = async () => {
+  try {
+    setLoading(true);
+
+    const response =
+      await adminMemberService.getMembers();
+
+    setMembers(response.data.items);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row select-none">
@@ -223,8 +259,8 @@ export default function AdminMembersPage() {
                     </tr>
                   ) : (
                     filteredMembers.map((member) => (
-                      <tr key={member.id} className="hover:bg-slate-50/65 transition">
-                        <td className="p-3 font-mono text-slate-500">{member.createDate}</td>
+                      <tr key={member._id} className="hover:bg-slate-50/65 transition">
+                        <td className="p-3 font-mono text-slate-500">{new Date(member.createdAt).toLocaleDateString()}</td>
                         <td className="p-3 font-bold text-slate-900 flex items-center gap-2.5">
                           <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
                             {member.name[0]}
@@ -234,13 +270,13 @@ export default function AdminMembersPage() {
                         <td className="p-3 text-slate-600 font-mono">{member.email}</td>
                         <td className="p-3 font-mono text-slate-700">
                           <div className="inline-flex items-center gap-2 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
-                            <span>{showPasswords[member.id] ? member.password : '••••••••'}</span>
+                            <span>{showPasswords[member._id] ? member.password : '••••••••'}</span>
                             <button 
-                              onClick={() => togglePasswordVisibility(member.id)} 
+                              onClick={() => togglePasswordVisibility(member._id)} 
                               className="text-slate-400 hover:text-slate-700 transition"
-                              title={showPasswords[member.id] ? 'Hide Password' : 'Reveal Password'}
+                              title={showPasswords[member._id] ? 'Hide Password' : 'Reveal Password'}
                             >
-                              {showPasswords[member.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              {showPasswords[member._id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
                           </div>
                         </td>
@@ -252,17 +288,21 @@ export default function AdminMembersPage() {
                         <td className="p-3 text-slate-600">{member.designation}</td>
                         <td className="p-3">
                           <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${
-                            member.userType === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
+                            member.role === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
                           }`}>
-                            {member.userType}
+                            {member.role}
                           </span>
                         </td>
                         <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${
-                            member.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
-                          }`}>
-                            {member.status}
-                          </span>
+                          <span
+  className={`px-2 py-0.5 rounded font-semibold text-[10px] ${
+    member.isActive
+      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+      : "bg-rose-50 text-rose-700 border border-rose-100"
+  }`}
+>
+  {member.isActive ? "Active" : "Inactive"}
+</span>
                         </td>
                         <td className="p-3 text-right">
                           <button
@@ -470,7 +510,7 @@ export default function AdminMembersPage() {
                 <label className="font-bold text-slate-700">Password</label>
                 <input
                   type="text"
-                  required
+                  required={!isEditModalOpen}
                   value={formPassword}
                   onChange={e => setFormPassword(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 outline-none focus:border-blue-500 font-mono"
