@@ -589,6 +589,7 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
       <option value="" disabled>Select Dept</option>
       <option value="Digital Mkg">Digital Mkg</option>
       <option value="HR">HR</option>
+      <option value="Administration">Administration</option>
       <option value="Operations">Operations</option>
       <option value="Purchase">Purchase</option>
       <option value="Sales">Sales</option>
