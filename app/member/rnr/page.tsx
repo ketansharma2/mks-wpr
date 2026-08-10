@@ -409,7 +409,7 @@ const handleSaveOverview = async () => {
             <td className="p-2.5 text-slate-600 max-w-[150px] whitespace-normal break-words">{item.endGoal}</td>
             <td className="p-2.5 text-slate-600 whitespace-nowrap">{item.timings}</td>
             <td className="p-2.5 text-slate-600 max-w-[180px] whitespace-normal break-words">{item.guideline}</td>
-            <td className="p-2.5 text-slate-600 max-w-[180px] whitespace-normal break-words">{item.process} / {item.limitations}</td>
+            <td className="p-2.5 text-slate-600 max-w-[180px] whitespace-normal break-words">{item.process}</td>
             <td className="p-2.5 text-right space-x-1 whitespace-nowrap">
               <button type="button" onClick={() => { setEditingRnrId(item._id); setRnrForm(item); }} className="p-1 text-blue-600 hover:bg-blue-50 rounded transition"><Edit2 className="w-3.5 h-3.5" /></button>
               <button
