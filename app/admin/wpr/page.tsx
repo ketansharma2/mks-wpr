@@ -16,7 +16,10 @@ export default function AdminWPRHubPage() {
 
   // Active Tab state ('tasks' or 'meetings')
   const [activeTab, setActiveTab] = useState<'tasks' | 'meetings'>('tasks');
+  const [taskPage, setTaskPage] = useState(1);
+const [meetingPage, setMeetingPage] = useState(1);
 
+const itemsPerPage = 10;
   // Filter States
   const [filterName, setFilterName] = useState('All');
   const [startDate, setStartDate] = useState(todayStr);
@@ -41,6 +44,8 @@ useEffect(() => {
   loadMembers();
 }, []);
 useEffect(() => {
+  setTaskPage(1);
+  setMeetingPage(1);
   loadData();
 }, [activeTab, filterName, startDate, endDate]);
 
@@ -75,9 +80,20 @@ const loadData = async () => {
 
   // Filtered Tasks WPR logic
  const filteredTasks = allTasksWPR;
-
 const filteredMeetings = allMeetingsWPR;
 
+const taskTotalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+const meetingTotalPages = Math.ceil(filteredMeetings.length / itemsPerPage);
+
+const paginatedTasks = filteredTasks.slice(
+  (taskPage - 1) * itemsPerPage,
+  taskPage * itemsPerPage
+);
+
+const paginatedMeetings = filteredMeetings.slice(
+  (meetingPage - 1) * itemsPerPage,
+  meetingPage * itemsPerPage
+);
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row select-none">
       
@@ -203,14 +219,14 @@ const filteredMeetings = allMeetingsWPR;
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {filteredTasks.length === 0 ? (
+          {paginatedTasks.length === 0 ? (
             <tr>
               <td colSpan={8} className="text-center py-8 text-slate-400 italic">
                 No task WPR logs found for the selected filter criteria.
               </td>
             </tr>
           ) : (
-            filteredTasks.map((t) => (
+            paginatedTasks.map((t) => (
               <tr key={t._id} className="hover:bg-slate-50/60 transition">
                 <td className="p-3 font-bold text-slate-900">{t.user.name}</td>
                 <td className="p-3 font-mono text-slate-500"> {new Date(t.date).toLocaleDateString("en-GB")}</td>
@@ -241,9 +257,44 @@ const filteredMeetings = allMeetingsWPR;
               </tr>
             ))
           )}
+        
         </tbody>
       </table>
     </div>
+      {filteredTasks.length > 0 && (
+  <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+    <p className="text-xs text-slate-500">
+      Showing{" "}
+      {(taskPage - 1) * itemsPerPage + 1}-
+      {Math.min(taskPage * itemsPerPage, filteredTasks.length)}{" "}
+      of {filteredTasks.length}
+    </p>
+
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={taskPage === 1}
+        onClick={() => setTaskPage(prev => prev - 1)}
+        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Previous
+      </button>
+
+      <span className="text-xs font-semibold text-slate-600">
+        Page {taskPage} of {taskTotalPages}
+      </span>
+
+      <button
+        type="button"
+        disabled={taskPage === taskTotalPages}
+        onClick={() => setTaskPage(prev => prev + 1)}
+        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+)}
   </div>
 )}
 
@@ -271,14 +322,14 @@ const filteredMeetings = allMeetingsWPR;
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {filteredMeetings.length === 0 ? (
+          {paginatedMeetings.length === 0 ? (
             <tr>
               <td colSpan={9} className="text-center py-8 text-slate-400 italic">
                 No meeting WPR logs found for the selected filter criteria.
               </td>
             </tr>
           ) : (
-            filteredMeetings.map((m) => (
+            paginatedMeetings.map((m) => (
               <tr key={m._id} className="hover:bg-slate-50/60 transition">
                 <td className="p-3 font-mono text-slate-500">{new Date(m.date).toLocaleDateString("en-GB")}</td>
                 <td className="p-3 font-bold text-slate-900">{m.user?.name || 'Unknown Member'}</td>
@@ -305,9 +356,44 @@ const filteredMeetings = allMeetingsWPR;
               </tr>
             ))
           )}
+
         </tbody>
       </table>
     </div>
+              {filteredMeetings.length > 0 && (
+  <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+    <p className="text-xs text-slate-500">
+      Showing{" "}
+      {(meetingPage - 1) * itemsPerPage + 1}-
+      {Math.min(meetingPage * itemsPerPage, filteredMeetings.length)}{" "}
+      of {filteredMeetings.length}
+    </p>
+
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={meetingPage === 1}
+        onClick={() => setMeetingPage(prev => prev - 1)}
+        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Previous
+      </button>
+
+      <span className="text-xs font-semibold text-slate-600">
+        Page {meetingPage} of {meetingTotalPages}
+      </span>
+
+      <button
+        type="button"
+        disabled={meetingPage === meetingTotalPages}
+        onClick={() => setMeetingPage(prev => prev + 1)}
+        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+)}
   </div>
 )}
 

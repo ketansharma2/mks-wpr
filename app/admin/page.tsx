@@ -17,36 +17,39 @@ export default function AdminDashboardPage() {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
 const [loading, setLoading] = useState(true);
-
+const [currentPage, setCurrentPage] = useState(1);
+const [totalPages, setTotalPages] = useState(1);
+const [totalLogs, setTotalLogs] = useState(0);
+const pageSize = 10;
 useEffect(() => {
   fetchDashboard();
-}, []);
+}, [currentPage]);
 
 const fetchDashboard = async () => {
   try {
     setLoading(true);
 
-  const [dashboard, logs] = await Promise.all([
-  adminDashboardService.getDashboard(),
-  activityLogService.getLogs({
-    limit: 10,
-  }),
-]);
+    const [dashboard, logs] = await Promise.all([
+      adminDashboardService.getDashboard(),
+      activityLogService.getLogs({
+        page: currentPage,
+        limit: pageSize,
+      }),
+    ]);
+
     setStats({
-      totalMembers:
-    dashboard.data.stats.totalMembers,
-
-  todayWprSubmitted:
-    dashboard.data.stats.todayWprSubmitted,
-
-  pendingSupportTickets:
-    dashboard.data.stats.pendingIssues,
-
-  companyDocs:
-    dashboard.data.stats.totalRoleOverview,
+      totalMembers: dashboard.data.stats.totalMembers,
+      todayWprSubmitted: dashboard.data.stats.todayWprSubmitted,
+      pendingSupportTickets: dashboard.data.stats.pendingIssues,
+      companyDocs: dashboard.data.stats.totalHierarchy,
     });
-    setActivityLogs(logs.data.items);
-    
+
+    setActivityLogs(logs.data.items || []);
+
+    // Adjust these according to your API response
+    setTotalPages(logs.data.pagination?.totalPages || 1);
+    setTotalLogs(logs.data.pagination?.total || 0);
+
   } catch (error) {
     console.error(error);
   } finally {
@@ -177,7 +180,35 @@ const fetchDashboard = async () => {
         </span>
       </div>
     </div>
-  ))}
+  ))
+  }
+  {activityLogs.length > 0 && (
+  <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+    <p className="text-xs text-slate-500">
+      Page {currentPage} of {totalPages}
+    </p>
+
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={currentPage === 1 || loading}
+        onClick={() => setCurrentPage(prev => prev - 1)}
+        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Previous
+      </button>
+
+      <button
+        type="button"
+        disabled={currentPage >= totalPages || loading}
+        onClick={() => setCurrentPage(prev => prev + 1)}
+        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+)}
 </div>
 </div>
 

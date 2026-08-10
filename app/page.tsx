@@ -34,6 +34,16 @@ export default function LoginPage() {
     }
 
     const user = response.data.user;
+     // Check selected tab against actual user role
+    if (selectedRole === "ADMIN" && user.role !== "ADMIN") {
+      setError("This account is not an Administrator account.");
+      return;
+    }
+
+    if (selectedRole === "MEMBER" && user.role !== "MEMBER") {
+      setError("This account is not a Team Member account.");
+      return;
+    }
 
     if (user.role === "ADMIN") {
       router.push("/admin");
@@ -154,13 +164,13 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-1">
+            {/* <div className="flex items-center justify-between text-xs pt-1">
               <label className="flex items-center text-slate-600 cursor-pointer hover:text-slate-900">
                 <input type="checkbox" className="h-4 w-4 bg-slate-100 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer" />
                 <span className="ml-2 font-medium">Remember me</span>
               </label>
               <a href="#" className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">Forgot password?</a>
-            </div>
+            </div> */}
 
             <button
               type="submit"
