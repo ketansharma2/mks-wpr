@@ -45,6 +45,12 @@ export default function WprPage() {
     return d.toISOString().split('T')[0];
   };
 
+  const getDateAfterTwoDays = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 2);
+  return d.toISOString().split("T")[0];
+};
+
   // Filter modes: 'preset' (Today/Yesterday dropdown) or 'range' (Date range)
   const [filterMode, setFilterMode] = useState<'preset' | 'range'>('preset');
   const [presetValue, setPresetValue] = useState<'today' | 'yesterday'>('today');
@@ -452,12 +458,19 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-2 text-xs items-center">
       
       {/* Date is locked/disabled to current/today's date */}
-      <input 
-        type="date" 
-        value={taskForm.date} 
-        disabled 
-        className="px-2 py-1.5 bg-slate-100 border border-sky-200 rounded-lg outline-none text-slate-500 cursor-not-allowed" 
-      />
+      <input
+  type="date"
+  value={taskForm.date}
+  min={getTodayDate()}
+  max={getDateAfterTwoDays()}
+  onChange={e =>
+    setTaskForm({
+      ...taskForm,
+      date: e.target.value
+    })
+  }
+  className="px-2 py-1.5 bg-slate-50 border border-sky-200 rounded-lg outline-none text-slate-900"
+/>
       
       {/* Deadline / Timeline as Date Input */}
       <input 
@@ -578,12 +591,19 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
  <form onSubmit={handleMeetingSubmit} className="bg-white p-3 rounded-xl border border-amber-200 space-y-2">
   {/* Row 1: All other fields */}
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 text-xs items-center">
-    <input 
-      type="date" 
-      value={meetingForm.date} 
-      disabled 
-      className="px-2.5 py-1.5 bg-slate-100 border border-amber-200 rounded-lg outline-none text-slate-500 cursor-not-allowed" 
-    />
+    <input
+  type="date"
+  value={meetingForm.date}
+  min={getTodayDate()}
+  max={getDateAfterTwoDays()}
+  onChange={e =>
+    setMeetingForm({
+      ...meetingForm,
+      date: e.target.value
+    })
+  }
+  className="px-2.5 py-1.5 bg-slate-50 border border-amber-200 rounded-lg outline-none text-slate-900"
+/>
     
     <select value={meetingForm.dept} onChange={e => setMeetingForm({...meetingForm, dept: e.target.value})} className="px-2.5 py-1.5 bg-slate-50 border border-amber-200 rounded-lg outline-none focus:border-blue-600 text-slate-900" required>
       <option value="" disabled>Select Dept</option>
