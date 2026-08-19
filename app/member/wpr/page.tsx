@@ -51,6 +51,12 @@ export default function WprPage() {
   return d.toISOString().split("T")[0];
 };
 
+const getDayAfterTomorrow = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 2);
+  return d.toISOString().split("T")[0];
+};
+
   // Filter modes: 'preset' (Today/Yesterday dropdown) or 'range' (Date range)
   const [filterMode, setFilterMode] = useState<'preset' | 'range'>('preset');
   const [presetValue, setPresetValue] = useState<'today' | 'yesterday'>('today');
@@ -62,6 +68,10 @@ const [error, setError] = useState("");
 const [tasks, setTasks] = useState<WprItem[]>([]);
 const [meetings, setMeetings] = useState<MeetingItem[]>([]);
 const [fixedTaskAdded, setFixedTaskAdded] = useState(false);
+const [taskPage, setTaskPage] = useState(1);
+const [meetingPage, setMeetingPage] = useState(1);
+
+const ITEMS_PER_PAGE = 10;
 
   // Form states
   const [taskForm, setTaskForm] = useState({ date: getTodayDate(), timeline: '', task: '', trgtMin: '', type: '', status: 'In Progress', upload: '' });
@@ -291,36 +301,64 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
 };
 
   // Filter logic based on selection
- const filteredTasks = tasks.filter((item) => {
-  const itemDate = item.date.split("T")[0];
+const filteredTasks = tasks
+  .filter((item) => {
+    const itemDate = item.date.split("T")[0];
 
-  if (filterMode === "preset") {
-    const targetDate =
-      presetValue === "today"
-        ? getTodayDate()
-        : getYesterdayDate();
+    if (filterMode === "preset") {
+      const targetDate =
+        presetValue === "today"
+          ? getTodayDate()
+          : getYesterdayDate();
 
-    return itemDate === targetDate;
-  }
+      return itemDate === targetDate;
+    }
 
-  return itemDate >= startDate && itemDate <= endDate;
-});
+    return itemDate >= startDate && itemDate <= endDate;
+  })
+  .sort(
+    (a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 
-  const filteredMeetings = meetings.filter((item) => {
-  const itemDate = item.date.split("T")[0];
+const filteredMeetings = meetings
+  .filter((item) => {
+    const itemDate = item.date.split("T")[0];
 
-  if (filterMode === "preset") {
-    const targetDate =
-      presetValue === "today"
-        ? getTodayDate()
-        : getYesterdayDate();
+    if (filterMode === "preset") {
+      const targetDate =
+        presetValue === "today"
+          ? getTodayDate()
+          : getYesterdayDate();
 
-    return itemDate === targetDate;
-  }
+      return itemDate === targetDate;
+    }
 
-  return itemDate >= startDate && itemDate <= endDate;
-});
+    return itemDate >= startDate && itemDate <= endDate;
+  })
+  .sort(
+    (a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 
+
+  const taskTotalPages = Math.ceil(
+  filteredTasks.length / ITEMS_PER_PAGE
+);
+
+const meetingTotalPages = Math.ceil(
+  filteredMeetings.length / ITEMS_PER_PAGE
+);
+
+const paginatedTasks = filteredTasks.slice(
+  (taskPage - 1) * ITEMS_PER_PAGE,
+  taskPage * ITEMS_PER_PAGE
+);
+
+const paginatedMeetings = filteredMeetings.slice(
+  (meetingPage - 1) * ITEMS_PER_PAGE,
+  meetingPage * ITEMS_PER_PAGE
+);
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row select-none" style={{ fontFamily: 'Cambria, serif' }}>
       <Sidebar />
@@ -462,7 +500,7 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
   type="date"
   value={taskForm.date}
   min={getTodayDate()}
-  max={getDateAfterTwoDays()}
+  max={getDayAfterTomorrow()}
   onChange={e =>
     setTaskForm({
       ...taskForm,
@@ -529,7 +567,7 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
       </tr>
     </thead>
     <tbody className="divide-y divide-sky-100/50 bg-white">
-      {filteredTasks.map((item, idx) => {
+      {paginatedTasks.map((item, idx) => {
         const itemDate = item.date.split("T")[0];
 
   const canEditDelete =
@@ -537,7 +575,7 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
     itemDate === getYesterdayDate();
         return(
         <tr key={item._id} className="group hover:bg-sky-50/45 transition-all duration-200 align-top">
-          <td className="p-2.5 font-semibold text-slate-400 text-left break-words">{idx + 1}</td>
+          <td className="p-2.5 font-semibold text-slate-400 text-left break-words">{(taskPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
           <td className="p-2.5 text-slate-500 text-left break-words">{item.date.split("T")[0]}</td>
           <td className="p-2.5 text-slate-700 text-left break-words">{item.timeline.split("T")[0]}</td>
           <td className="p-2.5 font-bold text-slate-900 text-left whitespace-normal break-words">{item.task}</td>
@@ -578,6 +616,40 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
 })}
     </tbody>
   </table>
+  {taskTotalPages > 1 && (
+  <div className="flex items-center justify-between px-3 py-2 border-t border-sky-200 bg-sky-50/50">
+    <span className="text-[11px] text-slate-500">
+      Showing{" "}
+      {(taskPage - 1) * ITEMS_PER_PAGE + 1}-
+      {Math.min(taskPage * ITEMS_PER_PAGE, filteredTasks.length)}
+      {" "}of {filteredTasks.length}
+    </span>
+
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={taskPage === 1}
+        onClick={() => setTaskPage((p) => p - 1)}
+        className="px-3 py-1 text-[11px] rounded-md border border-sky-200 bg-white disabled:opacity-40"
+      >
+        Previous
+      </button>
+
+      <span className="text-[11px] font-semibold">
+        Page {taskPage} of {taskTotalPages}
+      </span>
+
+      <button
+        type="button"
+        disabled={taskPage === taskTotalPages}
+        onClick={() => setTaskPage((p) => p + 1)}
+        className="px-3 py-1 text-[11px] rounded-md border border-sky-200 bg-white disabled:opacity-40"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+)}
 </div>
 </section>
 
@@ -595,7 +667,7 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
   type="date"
   value={meetingForm.date}
   min={getTodayDate()}
-  max={getDateAfterTwoDays()}
+  max={getDayAfterTomorrow()}
   onChange={e =>
     setMeetingForm({
       ...meetingForm,
@@ -677,13 +749,13 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
     </thead>
     <tbody className="divide-y divide-amber-100/50 bg-white">
 
-      {filteredMeetings.map((item, idx) => {
+      {paginatedMeetings.map((item, idx) => {
           const itemDate = item.date.split("T")[0];
 
   const canEditDelete = itemDate === getTodayDate();
         return(
         <tr key={item._id} className="group hover:bg-amber-50/45 transition-all duration-200 align-top">
-          <td className="p-2.5 font-semibold text-slate-400 text-left break-words">{idx + 1}</td>
+          <td className="p-2.5 font-semibold text-slate-400 text-left break-words">{(meetingPage - 1) * ITEMS_PER_PAGE + idx + 1}</td>
           <td className="p-2.5 text-slate-500 text-left break-words">{item.date.split("T")[0]}</td>
           <td className="p-2.5 text-slate-700 text-left break-words">{item.dept}</td>
           <td className="p-2.5 text-slate-700 text-left break-words">{item.attendees}</td>
@@ -718,6 +790,40 @@ const handleMeetingSubmit = async (e: React.FormEvent) => {
 })}
     </tbody>
   </table>
+  {meetingTotalPages > 1 && (
+  <div className="flex items-center justify-between px-3 py-2 border-t border-amber-200 bg-amber-50/50">
+    <span className="text-[11px] text-slate-500">
+      Showing{" "}
+      {(meetingPage - 1) * ITEMS_PER_PAGE + 1}-
+      {Math.min(meetingPage * ITEMS_PER_PAGE, filteredMeetings.length)}
+      {" "}of {filteredMeetings.length}
+    </span>
+
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={meetingPage === 1}
+        onClick={() => setMeetingPage((p) => p - 1)}
+        className="px-3 py-1 text-[11px] rounded-md border border-amber-200 bg-white disabled:opacity-40"
+      >
+        Previous
+      </button>
+
+      <span className="text-[11px] font-semibold">
+        Page {meetingPage} of {meetingTotalPages}
+      </span>
+
+      <button
+        type="button"
+        disabled={meetingPage === meetingTotalPages}
+        onClick={() => setMeetingPage((p) => p + 1)}
+        className="px-3 py-1 text-[11px] rounded-md border border-amber-200 bg-white disabled:opacity-40"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+)}
 </div>
 {error && (
   <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-red-700">
